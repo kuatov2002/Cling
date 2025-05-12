@@ -1,19 +1,19 @@
+using TriInspector;
 using UnityEngine;
 
 [RequireComponent(typeof(Camera))]
-[ExecuteInEditMode]
 public class ThirdPersonCamera : MonoBehaviour
 {
     [Header("Настройки камеры")]
     [SerializeField] private Transform target; // Цель (игрок)
-    [SerializeField] private Vector3 offset = new Vector3(0, 2, -5); // Смещение относительно игрока
+    [SerializeField] private Vector3 offset; // Смещение относительно игрока
     [SerializeField] private float minZoomDistance = 1f;
     [SerializeField] private float maxZoomDistance = 10f;
     [SerializeField] private float zoomSpeed = 2f;
 
-    private float _currentZoom = 5f;
+    [ShowInInspector,ReadOnly] private float _currentZoom = 5f;
 
-    private void Start()
+    private void Awake()
     {
         if (target == null)
         {
