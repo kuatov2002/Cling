@@ -8,9 +8,15 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/LowPoly.unity
     guid: d9e7a2c5d60d72c4c96ed84bcad0f020
+  - enabled: 0
+    path: Assets/Plugins/PolygonWestern/Scenes/Demo.unity
+    guid: b02577a54950ef949a2fcd9d37a1d40c
+  - enabled: 1
+    path: Assets/Scenes/BigCity.unity
+    guid: 8659d1c5e3926fc43a5af0fbcf935431
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
