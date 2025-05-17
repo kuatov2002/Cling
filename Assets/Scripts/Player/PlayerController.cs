@@ -15,8 +15,6 @@ public class PlayerMovement : MonoBehaviour
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
-        _rb.freezeRotation = true;
-        _rb.linearDamping = 5f; // Добавляем трение для плавной остановки
     }
 
     private void Update()

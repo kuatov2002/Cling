@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[RequireComponent(typeof(Collider),typeof(Rigidbody))]
 public class Bullet : MonoBehaviour
 {
     [SerializeField] private float speed = 20f;
@@ -27,10 +28,10 @@ public class Bullet : MonoBehaviour
     {
         _direction = dir;
     }
-
-    private void OnCollisionEnter(Collision collision)
+    
+    private void OnTriggerEnter(Collider other)
     {
-        IDamageable target = collision.gameObject.GetComponent<IDamageable>();
+        IDamageable target = other.gameObject.GetComponent<IDamageable>();
         if (target != null)
         {
             target.TakeDamage(_damage);
