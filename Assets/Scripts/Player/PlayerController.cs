@@ -1,7 +1,8 @@
+using Mirror;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-public class PlayerMovement : MonoBehaviour
+public class PlayerMovement : NetworkBehaviour
 {
     [SerializeField] private float moveSpeed;
     [SerializeField] private float jumpForce;
@@ -19,6 +20,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
+        if(!isLocalPlayer) return;
         if (Input.GetButtonDown("Jump") && _isGrounded)
         {
             _rb.linearVelocity = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z); // Сбрасываем вертикальную скорость

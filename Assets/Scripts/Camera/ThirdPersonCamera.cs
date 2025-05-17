@@ -1,8 +1,8 @@
-using TriInspector;
+using Mirror;
 using UnityEngine;
 
 [RequireComponent(typeof(Camera))]
-public class ThirdPersonCamera : MonoBehaviour
+public class ThirdPersonCamera : NetworkBehaviour
 {
     [Header("Настройки камеры")]
     [SerializeField] private Transform target; // Цель (игрок)
@@ -11,7 +11,7 @@ public class ThirdPersonCamera : MonoBehaviour
     [SerializeField] private float maxZoomDistance = 10f;
     [SerializeField] private float zoomSpeed = 2f;
 
-    [ShowInInspector,ReadOnly] private float _currentZoom = 5f;
+    [TriInspector.ShowInInspector,TriInspector.ReadOnly] private float _currentZoom = 5f;
 
     private void Awake()
     {
