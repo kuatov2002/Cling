@@ -1,7 +1,7 @@
+using Mirror;
 using UnityEngine;
 
-[RequireComponent(typeof(Collider),typeof(Rigidbody))]
-public class Bullet : MonoBehaviour
+public class Bullet : NetworkBehaviour
 {
     [SerializeField] private float speed = 20f;
     [SerializeField] private float lifeTime = 3f;
@@ -9,9 +9,22 @@ public class Bullet : MonoBehaviour
     private float _damage;
     private Vector3 _direction;
 
-    private void Start()
+    public override void OnStartServer()
     {
-        Destroy(gameObject, lifeTime);
+        Invoke(nameof(DestroySelf), lifeTime);
+    }
+
+    [Server]
+    private void DestroySelf()
+    {
+        NetworkServer.Destroy(gameObject);
+    }
+
+    [ClientRpc]
+    public void RpcInitialize(Vector3 dir, float dmg)
+    {
+        _direction = dir;
+        _damage = dmg;
     }
 
     private void Update()
@@ -19,24 +32,11 @@ public class Bullet : MonoBehaviour
         transform.position += _direction * (speed * Time.deltaTime);
     }
 
-    public void SetDamage(float dmg)
-    {
-        _damage = dmg;
-    }
-
-    public void SetDirection(Vector3 dir)
-    {
-        _direction = dir;
-    }
-    
     private void OnTriggerEnter(Collider other)
     {
-        IDamageable target = other.gameObject.GetComponent<IDamageable>();
-        if (target != null)
-        {
-            target.TakeDamage(_damage);
-        }
-
-        Destroy(gameObject); // Уничтожаем пулю при любом другом столкновении
+        if (!isServer) return;
+        var target = other.GetComponent<IDamageable>();
+        target?.TakeDamage(_damage);
+        NetworkServer.Destroy(gameObject);
     }
 }

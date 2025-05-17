@@ -1,6 +1,7 @@
+using Mirror;
 using UnityEngine;
 
-public class Gun : MonoBehaviour
+public class Gun : NetworkBehaviour
 {
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private float damage = 20f;
@@ -8,22 +9,26 @@ public class Gun : MonoBehaviour
     
     private float _lastFireTime = 0f;
 
+    [Command]
+    private void CmdFire()
+    {
+        // Spawn bullet on server
+        GameObject bullet = Instantiate(bulletPrefab, transform.position, transform.rotation);
+        NetworkServer.Spawn(bullet);
+
+        // Initialize bullet with direction/damage via its RPC
+        Bullet bulletComponent = bullet.GetComponent<Bullet>();
+        if (bulletComponent != null)
+        {
+            bulletComponent.RpcInitialize(transform.forward, damage);
+        }
+    }
+
+    [Client]
     public void Fire()
     {
         if (Time.time - _lastFireTime < cooldown) return;
-
-        // Create the bullet at the gun's position with the gun's rotation
-        GameObject bullet = Instantiate(bulletPrefab, transform.position, transform.rotation);
-        Bullet bulletScript = bullet.GetComponent<Bullet>();
-
-        if (bulletScript != null)
-        {
-            bulletScript.SetDamage(damage);
-            
-            // Use the gun's forward direction for bullet trajectory
-            bulletScript.SetDirection(transform.forward);
-        }
-
         _lastFireTime = Time.time;
+        CmdFire();
     }
 }

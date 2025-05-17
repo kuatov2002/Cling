@@ -1,11 +1,16 @@
+using Mirror;
 using UnityEngine;
 
-public class PlayerHealth : MonoBehaviour, IDamageable
+public class PlayerHealth : NetworkBehaviour, IDamageable
 {
     [SerializeField] private float maxHealth = 100f;
+
+    [SyncVar(hook = nameof(OnHealthChanged))]
     private float _currentHealth;
 
-    private void Awake()
+    // Инициализируется и на сервере, и на хост‑клиенте
+    [ServerCallback]
+    public override void OnStartServer()
     {
         _currentHealth = maxHealth;
     }
@@ -13,19 +18,18 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     public void TakeDamage(float damage)
     {
         _currentHealth = Mathf.Max(0f, _currentHealth - damage);
+        if (_currentHealth == 0f) Die();
+    }
 
-        Debug.Log($"Игрок получил {damage} урона. Осталось здоровья: {_currentHealth}");
-
-        if (_currentHealth == 0f)
-        {
-            Die();
-        }
+    private void OnHealthChanged(float oldValue, float newValue)
+    {
+        if (!isLocalPlayer) return;  // обновляем UI только для своего игрока
+        Debug.Log($"HP: {oldValue} → {newValue}");
+        // тут обновляем здоровье на экране
     }
 
     private void Die()
     {
-        Debug.Log("Игрок пал");
-        Destroy(gameObject);
-        // Здесь можно добавить логику смерти: деактивация персонажа, экран "Game Over" и т.д.
+        NetworkServer.Destroy(gameObject);
     }
 }
