@@ -1,5 +1,5 @@
-using Mirror;
 using UnityEngine;
+using Mirror;
 
 [RequireComponent(typeof(Camera))]
 public class ThirdPersonCamera : NetworkBehaviour
@@ -11,10 +11,23 @@ public class ThirdPersonCamera : NetworkBehaviour
     [SerializeField] private float maxZoomDistance = 10f;
     [SerializeField] private float zoomSpeed = 2f;
 
-    [TriInspector.ShowInInspector,TriInspector.ReadOnly] private float _currentZoom = 5f;
+    [TriInspector.ShowInInspector, TriInspector.ReadOnly]
+    private float _currentZoom = 5f;
+
+    private Camera _camera;
 
     private void Awake()
     {
+        _camera = GetComponent<Camera>();
+    }
+
+    public override void OnStartLocalPlayer()
+    {
+        // Включаем камеру только для локального игрока
+        if (_camera != null)
+            _camera.enabled = true;
+
+        // Инициализация зума после проверки локального игрока
         if (target == null)
         {
             Debug.LogError("Цель камеры не назначена!");
@@ -26,8 +39,21 @@ public class ThirdPersonCamera : NetworkBehaviour
         offset = offset.normalized;
     }
 
+    private void Start()
+    {
+        // Выключаем камеру и скрипт для всех не-локальных игроков
+        if (!isLocalPlayer)
+        {
+            if (_camera != null)
+                _camera.enabled = false;
+            enabled = false;
+        }
+    }
+
     private void LateUpdate()
     {
+        if (!isLocalPlayer) return;
+
         HandleInput();
         UpdateCameraPosition();
     }
@@ -46,13 +72,11 @@ public class ThirdPersonCamera : NetworkBehaviour
         Vector3 desiredPosition = target.position + playerRotation * (offset * _currentZoom);
 
         // Проверка на препятствия
-        RaycastHit hit;
-        if (Physics.Linecast(target.position, desiredPosition, out hit))
+        if (Physics.Linecast(target.position, desiredPosition, out RaycastHit hit))
         {
-            desiredPosition = hit.point; // Мгновенно перемещаем камеру к препятствию
+            desiredPosition = hit.point; // Перемещаем камеру к препятствию
         }
 
-        // Мгновенное изменение позиции камеры
         transform.position = desiredPosition;
 
         // Камера смотрит на игрока
