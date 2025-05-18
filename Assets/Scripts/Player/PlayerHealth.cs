@@ -8,6 +8,13 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
     [SyncVar(hook = nameof(OnHealthChanged))]
     private float _currentHealth;
 
+    private PlayerState _playerState;
+
+    private void Awake()
+    {
+        _playerState = GetComponent<PlayerState>();
+    }
+
     // Инициализируется и на сервере, и на хост‑клиенте
     [ServerCallback]
     public override void OnStartServer()
@@ -30,6 +37,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
 
     private void Die()
     {
+        _playerState.CurrentState = PlayerState.State.Dead;
         NetworkServer.Destroy(gameObject);
     }
 }

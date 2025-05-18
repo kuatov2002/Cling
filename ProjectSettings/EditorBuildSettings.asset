@@ -8,12 +8,9 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
-  - enabled: 0
-    path: Assets/Scenes/LowPoly.unity
-    guid: d9e7a2c5d60d72c4c96ed84bcad0f020
-  - enabled: 0
-    path: Assets/Plugins/PolygonWestern/Scenes/Demo.unity
-    guid: b02577a54950ef949a2fcd9d37a1d40c
+  - enabled: 1
+    path: Assets/Scenes/Menu.unity
+    guid: 7002dc50002afef46b8942cf107d4642
   - enabled: 1
     path: Assets/Scenes/BigCity.unity
     guid: 8659d1c5e3926fc43a5af0fbcf935431

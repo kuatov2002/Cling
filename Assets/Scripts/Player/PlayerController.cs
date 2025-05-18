@@ -1,4 +1,5 @@
 using Mirror;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -8,7 +9,7 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField] private float jumpForce;
     [SerializeField] private LayerMask groundLayer;
 
-    [SerializeField] private Gun _gun;
+    [SerializeField] private Gun gun;
 
     private Rigidbody _rb;
     private bool _isGrounded;
@@ -16,6 +17,16 @@ public class PlayerMovement : NetworkBehaviour
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
+    }
+
+    public override void OnStartLocalPlayer()
+    {
+        if(!isLocalPlayer) return;
+        var cam = Camera.main.AddComponent<ThirdPersonCamera>();
+        if (cam != null)
+        {
+            cam.Target = transform;
+        }
     }
 
     private void Update()
@@ -29,12 +40,13 @@ public class PlayerMovement : NetworkBehaviour
         }
         if (Input.GetButtonDown("Fire1")) // Левая кнопка мыши
         {
-            _gun.Fire();
+            gun.Fire();
         }
     }
 
     private void FixedUpdate()
     {
+        if(!isLocalPlayer) return;
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
 

@@ -5,7 +5,6 @@ public class PlayerRotation : MonoBehaviour
 {
     [Header("Настройки вращения")]
     [SerializeField] private float mouseSensitivity = 100f; // Чувствительность мыши
-    [SerializeField] private bool invertY = false; // Инвертировать вертикаль
     [SerializeField] private bool smoothRotation = true; // Плавное вращение
     [SerializeField] private float rotationSmoothTime = 0.1f; // Время плавности
 
