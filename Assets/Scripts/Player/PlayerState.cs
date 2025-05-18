@@ -8,13 +8,12 @@ public class PlayerState : NetworkBehaviour
 
     public enum State
     {
-        NotConnected,
         Alive,
         Cutscene,
         Dead
     }
 
-    private State _currentState=State.NotConnected; // Renamed to avoid naming conflict with class
+    private State _currentState=State.Alive; // Renamed to avoid naming conflict with class
 
     public State CurrentState // Property name should differ from class name
     {
@@ -34,7 +33,6 @@ public class PlayerState : NetworkBehaviour
         if(!isLocalPlayer) return;
         OnStateChanged += HandleStateChanged;
         OnStateChanged?.Invoke(CurrentState);
-        CurrentState = State.Alive;
     }
 
     // Method to handle state changes
