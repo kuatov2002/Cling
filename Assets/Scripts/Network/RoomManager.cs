@@ -6,6 +6,6 @@ public class RoomManager : NetworkRoomManager
     public override void OnRoomServerPlayersReady()
     {
         base.OnRoomServerPlayersReady();
-        Debug.Log("qwer");
+        Debug.Log("Game Started");
     }
 }

@@ -13,24 +13,25 @@ public class PlayerState : NetworkBehaviour
         Dead
     }
 
-    private State _currentState=State.Alive; // Renamed to avoid naming conflict with class
+    [SyncVar]
+    private int _stateInt=0;
 
-    public State CurrentState // Property name should differ from class name
+    public State CurrentState
     {
-        get => _currentState; // Fixed syntax - curly braces instead of =>
+        get => (State)_stateInt;
         set 
         { 
-            if (_currentState != value)
+            if (CurrentState != value)
             {
-                _currentState = value;
-                OnStateChanged?.Invoke(_currentState); // Invoke event when state changes
+                _stateInt = (int)value;
+                OnStateChanged?.Invoke(value);
+                RpcUpdateState((int)value);
             }
         }
     }
 
     public override void OnStartLocalPlayer()
     {
-        if(!isLocalPlayer) return;
         OnStateChanged += HandleStateChanged;
         OnStateChanged?.Invoke(CurrentState);
     }
@@ -39,5 +40,30 @@ public class PlayerState : NetworkBehaviour
     private void HandleStateChanged(State newState)
     {
         Debug.Log($"Player state changed to: {newState}");
+    }
+    [ClientRpc]
+    private void RpcUpdateState(int state)
+    {
+        if (!isLocalPlayer)
+        {
+            CurrentState = (State)state;
+        }
+    }
+
+    public override void OnStartServer()
+    {
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.RegisterPlayer(this);
+        }
+        else
+        {
+            Debug.LogError("GameManager instance is null when registering player");
+        }
+    }
+
+    public override void OnStopServer()
+    {
+        GameManager.Instance.UnregisterPlayer(this);
     }
 }

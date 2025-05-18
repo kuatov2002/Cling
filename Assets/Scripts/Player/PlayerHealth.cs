@@ -24,6 +24,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
 
     public void TakeDamage(float damage)
     {
+        if (!isServer) return;
         _currentHealth = Mathf.Max(0f, _currentHealth - damage);
         if (_currentHealth == 0f) Die();
     }
@@ -38,6 +39,5 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
     private void Die()
     {
         _playerState.CurrentState = PlayerState.State.Dead;
-        NetworkServer.Destroy(gameObject);
     }
 }
