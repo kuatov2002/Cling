@@ -5,8 +5,13 @@ using UnityEngine;
 
 public class GameManager : NetworkBehaviour
 {
-    private List<PlayerState> _players= new List<PlayerState>();
+    private List<PlayerState> _players = new List<PlayerState>();
     private List<PlayerRole> _playerRoles = new List<PlayerRole>();
+    
+    // Dictionary to store player indices that won't change during the game
+    private Dictionary<NetworkConnection, int> _playerStableIndices = new Dictionary<NetworkConnection, int>();
+    private int _nextPlayerIndex = 0;
+    
     public static GameManager Instance { get; private set; }
 
     private void Awake()
@@ -26,6 +31,12 @@ public class GameManager : NetworkBehaviour
     {
         _players.Add(player);
         player.OnStateChanged += HandlePlayerStateChanged;
+        
+        // Assign a stable index that won't change for this player
+        if (!_playerStableIndices.ContainsKey(player.connectionToClient))
+        {
+            _playerStableIndices[player.connectionToClient] = _nextPlayerIndex++;
+        }
         
         // Get the player's role component and register it
         PlayerRole playerRole = player.GetComponent<PlayerRole>();
@@ -62,6 +73,9 @@ public class GameManager : NetworkBehaviour
                 _playerRoles.Remove(playerRole);
             }
 
+            // We do NOT remove the player from _playerStableIndices
+            // This keeps their index stable for the entire game session
+
             UpdateAllPlayerIndices();
         }
     }
@@ -75,8 +89,8 @@ public class GameManager : NetworkBehaviour
             PlayerVisual visual = player.GetComponent<PlayerVisual>();
             if (visual != null)
             {
-                // This will call the hook on all clients
-                visual.SetPlayerIndex(GetPlayerIndex(player));
+                // This will call the hook on all clients, using stable indices
+                visual.SetPlayerIndex(GetPlayerStableIndex(player));
             }
         }
     }
@@ -84,6 +98,20 @@ public class GameManager : NetworkBehaviour
     public int GetPlayerIndex(PlayerState player)
     {
         return _players.IndexOf(player);
+    }
+    
+    public int GetPlayerStableIndex(PlayerState player)
+    {
+        if (player == null || player.connectionToClient == null)
+            return -1;
+            
+        // Return the stable index for this player's connection
+        if (_playerStableIndices.TryGetValue(player.connectionToClient, out int index))
+        {
+            return index;
+        }
+        
+        return -1;
     }
 
     [Server]
@@ -174,7 +202,7 @@ public class GameManager : NetworkBehaviour
     [ClientRpc]
     private void RpcGameOver()
     {
-        // Логика завершения игры на клиентах
+        // Game over logic for clients
         Debug.Log("Game Over");
     }
 }
