@@ -39,5 +39,6 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
     private void Die()
     {
         _playerState.CurrentState = PlayerState.State.Dead;
+        Destroy(gameObject);
     }
 }
