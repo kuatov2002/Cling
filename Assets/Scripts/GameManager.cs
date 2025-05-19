@@ -43,6 +43,8 @@ public class GameManager : NetworkBehaviour
         {
             Debug.LogError("PlayerRole component not found on player");
         }
+        
+        UpdateAllPlayerIndices();
     }
 
     [Server]
@@ -59,7 +61,29 @@ public class GameManager : NetworkBehaviour
             {
                 _playerRoles.Remove(playerRole);
             }
+
+            UpdateAllPlayerIndices();
         }
+    }
+
+    [Server]
+    private void UpdateAllPlayerIndices()
+    {
+        // Find all PlayerVisual components and trigger their index updates
+        foreach (PlayerState player in _players)
+        {
+            PlayerVisual visual = player.GetComponent<PlayerVisual>();
+            if (visual != null)
+            {
+                // This will call the hook on all clients
+                visual.SetPlayerIndex(GetPlayerIndex(player));
+            }
+        }
+    }
+
+    public int GetPlayerIndex(PlayerState player)
+    {
+        return _players.IndexOf(player);
     }
 
     [Server]
@@ -70,7 +94,7 @@ public class GameManager : NetworkBehaviour
             return;
         
         // Create a list to shuffle the roles
-        List<PlayerRole.RoleType> availableRoles = new List<PlayerRole.RoleType>();
+        List<RoleType> availableRoles = new List<RoleType>();
         
         // Add roles based on player count
         // Rules based on Bang! card game:
@@ -82,10 +106,10 @@ public class GameManager : NetworkBehaviour
         int playerCount = _playerRoles.Count;
         
         // Always add one Sheriff
-        availableRoles.Add(PlayerRole.RoleType.Sheriff);
+        availableRoles.Add(RoleType.Sheriff);
         
         // Renegades
-        availableRoles.Add(PlayerRole.RoleType.Renegade);
+        availableRoles.Add(RoleType.Renegade);
         
         
         // Outlaws
@@ -95,7 +119,7 @@ public class GameManager : NetworkBehaviour
         
         for (int i = 0; i < outlawCount; i++)
         {
-            availableRoles.Add(PlayerRole.RoleType.Outlaw);
+            availableRoles.Add(RoleType.Outlaw);
         }
         
         // Deputies
@@ -105,7 +129,7 @@ public class GameManager : NetworkBehaviour
         
         for (int i = 0; i < deputyCount; i++)
         {
-            availableRoles.Add(PlayerRole.RoleType.Deputy);
+            availableRoles.Add(RoleType.Deputy);
         }
         
         // Shuffle the roles
@@ -114,17 +138,7 @@ public class GameManager : NetworkBehaviour
         // Assign roles to players
         for (int i = 0; i < _playerRoles.Count; i++)
         {
-            if (i < availableRoles.Count)
-            {
-                _playerRoles[i].CurrentRole = availableRoles[i];
-                Debug.Log($"Player {i} assigned role: {availableRoles[i]}");
-            }
-            else
-            {
-                // If we have more players than defined roles, assign Outlaw as default
-                _playerRoles[i].CurrentRole = PlayerRole.RoleType.Outlaw;
-                Debug.Log($"Player {i} assigned default role: Outlaw");
-            }
+            _playerRoles[i].CurrentRole = availableRoles[i];
         }
         
         // Notify all players that roles have been assigned
