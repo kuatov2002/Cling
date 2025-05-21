@@ -18,7 +18,7 @@ public class PlayerVisual : NetworkBehaviour
         if (playerState != null && GameManager.Instance != null)
         {
             // Set the player index from the server
-            playerIndex = GameManager.Instance.GetPlayerIndex(playerState);
+            playerIndex = GameManager.Instance.GetPlayerStableIndex(playerState);
         }
     }
 

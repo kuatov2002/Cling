@@ -26,7 +26,6 @@ public class PlayerState : NetworkBehaviour
                 _stateInt = (int)value;
                 OnStateChanged?.Invoke(value);
                 
-                // Only call RPC if we're connected to a server and we have authority
                 if (NetworkClient.active && NetworkClient.isConnected && isOwned)
                 {
                     RpcUpdateState((int)value);
@@ -34,6 +33,8 @@ public class PlayerState : NetworkBehaviour
             }
         }
     }
+
+    public bool IsAlive => CurrentState == State.Alive; // Новое свойство
 
     public override void OnStartLocalPlayer()
     {
@@ -51,7 +52,6 @@ public class PlayerState : NetworkBehaviour
     {
         if (!isLocalPlayer)
         {
-            // Prevent infinite recursion by updating _stateInt directly
             _stateInt = state;
             OnStateChanged?.Invoke((State)state);
         }

@@ -1,13 +1,16 @@
+using System;
 using Mirror;
 using UnityEngine;
-using System;
 
 public class PlayerRole : NetworkBehaviour
 {
     [SerializeField] private GameObject sheriffStar;
+
+    private PlayerState _player; // Ссылка на PlayerState
+    public PlayerState Player => _player; // Свойство для доступа к PlayerState
+
     public event Action<RoleType> OnRoleChanged;
 
-    // SyncVar с хуком будет вызывать OnRoleUpdated при изменении роли на любом клиенте
     [SyncVar(hook = nameof(OnRoleUpdated))]
     private int _roleInt = 0;
 
@@ -17,60 +20,48 @@ public class PlayerRole : NetworkBehaviour
         set
         {
             if (!isServer) return;
-            
+
             if (CurrentRole != value)
             {
                 _roleInt = (int)value;
-                // Вызываем событие только на сервере
                 OnRoleChanged?.Invoke(value);
             }
         }
     }
 
-    // Этот метод вызывается при старте объекта на всех клиентах
     public override void OnStartClient()
     {
-        // Инициализируем отображение звезды на основе текущей роли
+        base.OnStartClient();
+        _player = GetComponent<PlayerState>(); // Получаем PlayerState
         UpdateSheriffStarVisibility((RoleType)_roleInt);
     }
 
-    // Этот метод вызывается только для объекта локального игрока
     public override void OnStartLocalPlayer()
     {
-        // Подписываемся на изменения роли
+        base.OnStartLocalPlayer();
         OnRoleChanged += HandleRoleChanged;
-        
-        // Для локального игрока также информируем UI менеджер
         OnRoleChanged += UIManager.Instance.OnRoleChanged;
-        
-        // Вызываем событие для инициализации UI
         OnRoleChanged?.Invoke(CurrentRole);
     }
 
     private void HandleRoleChanged(RoleType newRole)
     {
         Debug.Log($"Player role changed to: {newRole}");
-        // Здесь можем обновить UI или другие характеристики на основе роли
-        // НЕ обновляем здесь звезду! Этот метод вызывается только для локального игрока
     }
 
-    // Этот метод вызывается на всех клиентах при изменении _roleInt
     private void OnRoleUpdated(int oldValue, int newValue)
     {
         RoleType oldRole = (RoleType)oldValue;
         RoleType newRole = (RoleType)newValue;
-        
-        // Обновляем видимость звезды для всех клиентов
+
         UpdateSheriffStarVisibility(newRole);
-        
-        // Если это локальный игрок, также вызываем событие для обновления UI
+
         if (isLocalPlayer && oldRole != newRole)
         {
             OnRoleChanged?.Invoke(newRole);
         }
     }
-    
-    // Метод для обновления видимости звезды шерифа
+
     private void UpdateSheriffStarVisibility(RoleType role)
     {
         if (sheriffStar != null)
@@ -78,15 +69,12 @@ public class PlayerRole : NetworkBehaviour
             sheriffStar.SetActive(role == RoleType.Sheriff);
         }
     }
-    
-    // При уничтожении объекта отписываемся от событий
+
     private void OnDestroy()
     {
         if (isLocalPlayer)
         {
             OnRoleChanged -= HandleRoleChanged;
-            
-            // Отписываем UI менеджер, если он существует
             if (UIManager.Instance != null)
             {
                 OnRoleChanged -= UIManager.Instance.OnRoleChanged;

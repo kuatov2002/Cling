@@ -5,13 +5,12 @@ using UnityEngine;
 
 public class GameManager : NetworkBehaviour
 {
-    private List<PlayerState> _players = new List<PlayerState>();
-    private List<PlayerRole> _playerRoles = new List<PlayerRole>();
-    
-    // Dictionary to store player indices that won't change during the game
-    private Dictionary<NetworkConnection, int> _playerStableIndices = new Dictionary<NetworkConnection, int>();
+    private List<PlayerState> _players;
+    private List<PlayerRole> _playerRoles;
+
+    private Dictionary<NetworkConnection, int> _playerStableIndices;
     private int _nextPlayerIndex = 0;
-    
+
     public static GameManager Instance { get; private set; }
 
     private void Awake()
@@ -24,37 +23,41 @@ public class GameManager : NetworkBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        _playerStableIndices = new Dictionary<NetworkConnection, int>();
+        _players = new List<PlayerState>();
+        _playerRoles = new List<PlayerRole>();
+        
+        RoomManager.HostStopped+= OnNetworkStopped;
+        RoomManager.ClientStopped+= OnNetworkStopped;
     }
-    
+
     [Server]
     public void RegisterPlayer(PlayerState player)
     {
         _players.Add(player);
         player.OnStateChanged += HandlePlayerStateChanged;
-        
-        // Assign a stable index that won't change for this player
+
         if (!_playerStableIndices.ContainsKey(player.connectionToClient))
         {
             _playerStableIndices[player.connectionToClient] = _nextPlayerIndex++;
         }
-        
-        // Get the player's role component and register it
+
         PlayerRole playerRole = player.GetComponent<PlayerRole>();
         if (playerRole != null)
         {
             _playerRoles.Add(playerRole);
-            
-            // Assign roles if we have enough players
-            //if (_players.Count >= 4)
-            //{
+        
+            // Only assign roles if we have enough players to do so
+            if (_playerRoles.Count >= 4)
+            {
                 AssignPlayerRoles();
-            //}
+            }
         }
         else
         {
             Debug.LogError("PlayerRole component not found on player");
         }
-        
+
         UpdateAllPlayerIndices();
     }
 
@@ -65,111 +68,86 @@ public class GameManager : NetworkBehaviour
         {
             player.OnStateChanged -= HandlePlayerStateChanged;
             _players.Remove(player);
-            
-            // Also remove the player role
+
             PlayerRole playerRole = player.GetComponent<PlayerRole>();
             if (playerRole != null && _playerRoles.Contains(playerRole))
             {
                 _playerRoles.Remove(playerRole);
             }
-
-            // We do NOT remove the player from _playerStableIndices
-            // This keeps their index stable for the entire game session
-
-            UpdateAllPlayerIndices();
         }
+
+        UpdateAllPlayerIndices();
     }
 
     [Server]
     private void UpdateAllPlayerIndices()
     {
-        // Find all PlayerVisual components and trigger their index updates
         foreach (PlayerState player in _players)
         {
             PlayerVisual visual = player.GetComponent<PlayerVisual>();
             if (visual != null)
             {
-                // This will call the hook on all clients, using stable indices
                 visual.SetPlayerIndex(GetPlayerStableIndex(player));
             }
         }
     }
 
-    public int GetPlayerIndex(PlayerState player)
-    {
-        return _players.IndexOf(player);
-    }
-    
     public int GetPlayerStableIndex(PlayerState player)
     {
         if (player == null || player.connectionToClient == null)
             return -1;
-            
-        // Return the stable index for this player's connection
+
         if (_playerStableIndices.TryGetValue(player.connectionToClient, out int index))
         {
             return index;
         }
-        
+
         return -1;
     }
 
     [Server]
     private void AssignPlayerRoles()
     {
-        // Don't assign roles if already assigned or not enough players
-        //if (_playerRoles.Count < 3)
-            //return;
-        
-        // Create a list to shuffle the roles
         List<RoleType> availableRoles = new List<RoleType>();
-        
-        // Add roles based on player count
-        // Rules based on Bang! card game:
-        // 4 players: 1 Sheriff, 1 Renegade, 2 Outlaws
-        // 5 players: 1 Sheriff, 1 Renegade, 2 Outlaws, 1 Deputy
-        // 6 players: 1 Sheriff, 1 Renegade, 3 Outlaws, 1 Deputy
-        // 7 players: 1 Sheriff, 1 Renegade, 3 Outlaws, 2 Deputies
-        
         int playerCount = _playerRoles.Count;
-        
-        // Always add one Sheriff
+
         availableRoles.Add(RoleType.Sheriff);
-        
-        // Renegades
         availableRoles.Add(RoleType.Renegade);
-        
-        
-        // Outlaws
-        int outlawCount = 0;
-        if (playerCount == 4) outlawCount = 2;
-        else if (playerCount <= 7) outlawCount = (playerCount - 2) / 2 + 1; // Formula for 5-7 players
-        
+
+        int outlawCount = playerCount switch
+        {
+            4 => 2,
+            5 => 2,
+            6 => 3,
+            7 => 3,
+            _ => 0
+        };
+
         for (int i = 0; i < outlawCount; i++)
         {
             availableRoles.Add(RoleType.Outlaw);
         }
-        
-        // Deputies
-        int deputyCount = 0;
-        if (playerCount >= 5 && playerCount <= 6) deputyCount = 1;
-        else if (playerCount == 7) deputyCount = 2;
-        
+
+        int deputyCount = playerCount switch
+        {
+            5 => 1,
+            6 => 1,
+            7 => 2,
+            _ => 0
+        };
+
         for (int i = 0; i < deputyCount; i++)
         {
             availableRoles.Add(RoleType.Deputy);
         }
-        
-        // Shuffle the roles
+
         availableRoles = availableRoles.OrderBy(_ => Random.value).ToList();
-        
-        // Assign roles to players
+
         for (int i = 0; i < _playerRoles.Count; i++)
         {
             _playerRoles[i].CurrentRole = availableRoles[i];
         }
-        
-        // Notify all players that roles have been assigned
+
         RpcRolesAssigned();
     }
 
@@ -177,7 +155,6 @@ public class GameManager : NetworkBehaviour
     private void RpcRolesAssigned()
     {
         Debug.Log("All roles have been assigned!");
-        // You could trigger UI elements to reveal roles here
     }
 
     private void HandlePlayerStateChanged(PlayerState.State newState)
@@ -188,21 +165,54 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    [Server]
     private void CheckWinConditions()
     {
-        Debug.Log("Check");
-    }
+        bool sheriffAlive = _playerRoles.Any(r => r.CurrentRole == RoleType.Sheriff && r.Player.IsAlive);
 
+        if (!sheriffAlive)
+        {
+            ServerGameOver("Outlaws");
+            return;
+        }
+
+        bool anyOutlawAlive = _playerRoles.Any(r => r.CurrentRole == RoleType.Outlaw && r.Player.IsAlive);
+        bool anyRenegadeAlive = _playerRoles.Any(r => r.CurrentRole == RoleType.Renegade && r.Player.IsAlive);
+
+        if (!anyOutlawAlive && !anyRenegadeAlive)
+        {
+            ServerGameOver("Sheriff");
+            return;
+        }
+
+        int totalAlive = _playerRoles.Count(r => r.Player.IsAlive);
+
+        if (totalAlive == 1)
+        {
+            var lastPlayer = _playerRoles.FirstOrDefault(r => r.Player.IsAlive);
+            if (lastPlayer?.CurrentRole == RoleType.Renegade)
+            {
+                ServerGameOver("Renegade");
+                return;
+            }
+        }
+    }
     [Server]
-    private void ServerGameOver()
+    private void ServerGameOver(string winningTeam)
     {
-        RpcGameOver();
+        RpcGameOver(winningTeam);
     }
 
     [ClientRpc]
-    private void RpcGameOver()
+    private void RpcGameOver(string winningTeam)
     {
-        // Game over logic for clients
-        Debug.Log("Game Over");
+        Debug.Log($"{winningTeam} have won the game!");
+        UIManager.Instance.Gameover(winningTeam);
+        // Здесь можно добавить логику отображения результата, рестарт игры или переход на экран победы
+    }
+    
+    private void OnNetworkStopped()
+    {
+        
     }
 }
