@@ -45,10 +45,10 @@ public class GameManager : NetworkBehaviour
             _playerRoles.Add(playerRole);
             
             // Assign roles if we have enough players
-            if (_players.Count >= 3)
-            {
+            //if (_players.Count >= 4)
+            //{
                 AssignPlayerRoles();
-            }
+            //}
         }
         else
         {
@@ -118,8 +118,8 @@ public class GameManager : NetworkBehaviour
     private void AssignPlayerRoles()
     {
         // Don't assign roles if already assigned or not enough players
-        if (_playerRoles.Count < 3)
-            return;
+        //if (_playerRoles.Count < 3)
+            //return;
         
         // Create a list to shuffle the roles
         List<RoleType> availableRoles = new List<RoleType>();

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class PlayerState : NetworkBehaviour
 {
-    public event Action<State> OnStateChanged; // Convention: capitalize event names
+    public event Action<State> OnStateChanged;
 
     public enum State
     {
@@ -14,7 +14,7 @@ public class PlayerState : NetworkBehaviour
     }
 
     [SyncVar]
-    private int _stateInt=0;
+    private int _stateInt = 0;
 
     public State CurrentState
     {
@@ -25,7 +25,12 @@ public class PlayerState : NetworkBehaviour
             {
                 _stateInt = (int)value;
                 OnStateChanged?.Invoke(value);
-                RpcUpdateState((int)value);
+                
+                // Only call RPC if we're connected to a server and we have authority
+                if (NetworkClient.active && NetworkClient.isConnected && isOwned)
+                {
+                    RpcUpdateState((int)value);
+                }
             }
         }
     }
@@ -36,17 +41,19 @@ public class PlayerState : NetworkBehaviour
         OnStateChanged?.Invoke(CurrentState);
     }
 
-    // Method to handle state changes
     private void HandleStateChanged(State newState)
     {
         Debug.Log($"Player state changed to: {newState}");
     }
+
     [ClientRpc]
     private void RpcUpdateState(int state)
     {
         if (!isLocalPlayer)
         {
-            CurrentState = (State)state;
+            // Prevent infinite recursion by updating _stateInt directly
+            _stateInt = state;
+            OnStateChanged?.Invoke((State)state);
         }
     }
 
@@ -64,6 +71,9 @@ public class PlayerState : NetworkBehaviour
 
     public override void OnStopServer()
     {
-        GameManager.Instance.UnregisterPlayer(this);
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.UnregisterPlayer(this);
+        }
     }
 }
