@@ -59,7 +59,7 @@ public class PlayerState : NetworkBehaviour
 
     public override void OnStartServer()
     {
-        if (GameManager.Instance != null)
+        if (GameManager.Instance)
         {
             GameManager.Instance.RegisterPlayer(this);
         }
@@ -71,7 +71,7 @@ public class PlayerState : NetworkBehaviour
 
     public override void OnStopServer()
     {
-        if (GameManager.Instance != null)
+        if (GameManager.Instance)
         {
             GameManager.Instance.UnregisterPlayer(this);
         }

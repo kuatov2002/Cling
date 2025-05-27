@@ -5,10 +5,12 @@ using UnityEngine;
 
 public class UIManager : MonoBehaviour
 {
-    public static UIManager Instance { get; private set; }
+    public static UIManager Instance;
     [SerializeField] private List<PlayerRoleMapping> playerRoleMappings = new List<PlayerRoleMapping>();
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI gameOverText;
+    [SerializeField] private GameObject awakeObject;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -20,10 +22,11 @@ public class UIManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
         
-        if(gameOverPanel) gameOverPanel.SetActive(false);
+        if (gameOverPanel) gameOverPanel.SetActive(false);
+        if (awakeObject) awakeObject.SetActive(true);
         
-        RoomManager.HostStopped+= OnNetworkStopped;
-        RoomManager.ClientStopped+= OnNetworkStopped;
+        RoomManager.HostStopped += OnNetworkStopped;
+        RoomManager.ClientStopped += OnNetworkStopped;
     }
 
 
