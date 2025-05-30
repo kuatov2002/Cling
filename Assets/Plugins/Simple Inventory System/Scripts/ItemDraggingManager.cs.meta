@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 4a98f4a84ddc3af40824642a1cd0b76e
+AssetOrigin:
+  serializedVersion: 1
+  productId: 314055
+  packageName: Simple Inventory System
+  packageVersion: 1.0
+  assetPath: Assets/Simple Inventory System/Scripts/ItemDraggingManager.cs
+  uploadId: 740847

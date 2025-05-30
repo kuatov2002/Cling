@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: eff6bed14ed26ca49a37d57572ddc448
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 314055
+  packageName: Simple Inventory System
+  packageVersion: 1.0
+  assetPath: Assets/Simple Inventory System/Materials/Grass.mat
+  uploadId: 740847

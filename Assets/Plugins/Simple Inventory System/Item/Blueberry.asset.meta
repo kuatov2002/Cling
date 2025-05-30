@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7f36a77254c1ca648a9171566729448c
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 314055
+  packageName: Simple Inventory System
+  packageVersion: 1.0
+  assetPath: Assets/Simple Inventory System/Item/Blueberry.asset
+  uploadId: 740847

@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 980a60e1e064f1745945bc01cf026f2b, type: 3}
+  m_Name: Chilli
+  m_EditorClassIdentifier: 
+  itemName: Chilli
+  itemDescription: A steaming bowl of homemade chili, packed with tender beef, kidney
+    beans, and a blend of warming spices. The rich aroma promises a satisfying and
+    filling meal.
+  itemTooltip: Restores 40 Hunger
+  itemIcon: {fileID: 21300000, guid: 4e91672c0a9122944b236cf1fa7a1e84, type: 3}
