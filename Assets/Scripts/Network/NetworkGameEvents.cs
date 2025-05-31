@@ -39,6 +39,13 @@ public class NetworkGameEvents : NetworkBehaviour
     public void RpcGameOver(string winningTeam)
     {
         Debug.Log($"{winningTeam} have won the game!");
-        UIManager.Instance?.Gameover(winningTeam);
+        UIManager.Instance?.Gameover($"{winningTeam} have won the game!");
+    }
+    
+    [ClientRpc]
+    public void RpcSceneLoaded() {
+        // Вызывается на клиентах после загрузки сцены
+        Debug.Log("Scene loaded on client");
+        GameManager.Instance?.OnClientSceneLoaded();
     }
 }

@@ -13,8 +13,7 @@ public class PlayerRotation : MonoBehaviour
 
     private void Start()
     {
-        Cursor.lockState = CursorLockMode.Locked; // Блокируем курсор
-        Cursor.visible = false;
+        UIManager.Instance.LockCursor(true);
     }
 
     private void Update()

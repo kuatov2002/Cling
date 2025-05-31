@@ -41,7 +41,6 @@ public class PlayerRole : NetworkBehaviour
         base.OnStartLocalPlayer();
         OnRoleChanged += HandleRoleChanged;
         OnRoleChanged += UIManager.Instance.OnRoleChanged;
-        OnRoleChanged?.Invoke(CurrentRole);
     }
 
     private void HandleRoleChanged(RoleType newRole)

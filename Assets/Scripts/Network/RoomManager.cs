@@ -11,7 +11,6 @@ public class RoomManager : NetworkRoomManager
     public static event System.Action GameStarted;
     public static event System.Action<int> PlayersCountChanged;
 
-    [SerializeField] private int minPlayersToStart = 4;
     [SerializeField] private int maxPlayers = 7;
 
     private readonly Dictionary<NetworkConnection, NetworkRoomPlayer> _roomPlayers = new();
@@ -21,7 +20,6 @@ public class RoomManager : NetworkRoomManager
     {
         base.Awake();
         maxConnections = maxPlayers;
-        minPlayers = minPlayersToStart;
     }
 
     #region Server Callbacks
@@ -76,9 +74,9 @@ public class RoomManager : NetworkRoomManager
 
     public override void OnRoomServerPlayersReady()
     {
-        if (_currentPlayerCount < minPlayersToStart)
+        if (_currentPlayerCount < minPlayers)
         {
-            Debug.LogWarning($"Not enough players to start. Need {minPlayersToStart}, have {_currentPlayerCount}");
+            Debug.LogWarning($"Not enough players to start. Need {minPlayers}, have {_currentPlayerCount}");
             return;
         }
 
@@ -182,11 +180,20 @@ public class RoomManager : NetworkRoomManager
         base.OnRoomServerPlayersNotReady();
     }
 
-    public override bool OnRoomServerSceneLoadedForPlayer(NetworkConnectionToClient conn, GameObject roomPlayer, GameObject gamePlayer)
-    {
-        Debug.Log($"Scene loaded for player: {conn.connectionId}");
-        return base.OnRoomServerSceneLoadedForPlayer(conn, roomPlayer, gamePlayer);
+    public override bool OnRoomServerSceneLoadedForPlayer(NetworkConnectionToClient conn, GameObject roomPlayer, GameObject gamePlayer) {
+        bool result = base.OnRoomServerSceneLoadedForPlayer(conn, roomPlayer, gamePlayer);
+    
+        if (result && NetworkGameEvents.Instance != null) {
+            // Уведомляем клиента о загрузке сцены
+            conn.Send(new SceneLoadedMessage());
+        }
+    
+        return result;
     }
 
     #endregion
+}
+
+
+public struct SceneLoadedMessage : NetworkMessage {
 }

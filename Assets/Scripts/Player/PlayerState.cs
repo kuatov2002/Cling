@@ -40,6 +40,8 @@ public class PlayerState : NetworkBehaviour
     {
         OnStateChanged += HandleStateChanged;
         OnStateChanged?.Invoke(CurrentState);
+        
+        CmdConfirmSceneLoaded();
     }
 
     private void HandleStateChanged(State newState)
@@ -75,5 +77,18 @@ public class PlayerState : NetworkBehaviour
         {
             GameManager.Instance.UnregisterPlayer(this);
         }
+    }
+    
+    [Command]
+    private void CmdConfirmSceneLoaded()
+    {
+        // Выполняется на сервере
+        Debug.Log("Client confirmed scene loaded");
+        GameManager.Instance?.OnClientSceneLoaded();
+    }
+
+    [ClientRpc]
+    private void RpcSceneLoaded() {
+        GameManager.Instance?.OnClientSceneLoaded();
     }
 }

@@ -11,8 +11,6 @@ public class GameManager : MonoBehaviour
     [Header("Game Configuration")]
     [SerializeField] private float gameStartDelay = 3f;
     [SerializeField] private bool autoAssignRoles = true;
-    
-    [SerializeField] private GameObject awakeObject;
 
     // Player Management
     private readonly List<PlayerState> _players = new();
@@ -24,6 +22,8 @@ public class GameManager : MonoBehaviour
     private GameState _currentGameState = GameState.Waiting;
     private bool _gameInProgress = false;
 
+    
+    private int _clientsSceneLoadedCount = 0;
     public enum GameState
     {
         Waiting,
@@ -43,7 +43,6 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         SubscribeToNetworkEvents();
-        if (awakeObject) awakeObject.SetActive(true);
     }
 
     private void OnDestroy()
@@ -73,6 +72,7 @@ public class GameManager : MonoBehaviour
         RoomManager.ClientStopped += OnNetworkStopped;
         RoomManager.GameStarted += OnGameStarted;
         RoomManager.PlayerDisconnected += OnPlayerDisconnected;
+        NetworkClient.RegisterHandler<SceneLoadedMessage>(OnSceneLoadedMessage);
     }
 
     private void UnsubscribeFromNetworkEvents()
@@ -81,6 +81,7 @@ public class GameManager : MonoBehaviour
         RoomManager.ClientStopped -= OnNetworkStopped;
         RoomManager.GameStarted -= OnGameStarted;
         RoomManager.PlayerDisconnected -= OnPlayerDisconnected;
+        NetworkClient.UnregisterHandler<SceneLoadedMessage>();
     }
 
     #endregion
@@ -206,7 +207,7 @@ public class GameManager : MonoBehaviour
 
     public int GetPlayerStableIndex(PlayerState player)
     {
-        if (player?.connectionToClient == null) return -1;
+        if (player.connectionToClient == null) return -1;
         
         return _playerStableIndices.TryGetValue(player.connectionToClient, out int index) ? index : -1;
     }
@@ -233,7 +234,7 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log($"Roles assigned to {_playerRoles.Count} players");
-        NetworkGameEvents.Instance?.RpcRolesAssigned();
+        NetworkGameEvents.Instance.RpcRolesAssigned();
     }
     
     private List<RoleType> GenerateRoleDistribution(int playerCount)
@@ -291,13 +292,17 @@ public class GameManager : MonoBehaviour
         _currentGameState = GameState.InProgress;
         _gameInProgress = true;
 
-        if (autoAssignRoles && CanAssignRoles())
-        {
+        NetworkGameEvents.Instance.RpcGameInitialized();
+        Debug.Log("Game initialized and in progress");
+    }
+    
+    public void OnClientSceneLoaded() {
+        _clientsSceneLoadedCount++;
+        Debug.Log($"Clients loaded scene: {_clientsSceneLoadedCount}/{_players.Count}");
+    
+        if (_clientsSceneLoadedCount == _players.Count && autoAssignRoles && CanAssignRoles()) {
             AssignPlayerRoles();
         }
-
-        NetworkGameEvents.Instance?.RpcGameInitialized();
-        Debug.Log("Game initialized and in progress");
     }
     
     private void HandlePlayerStateChanged(PlayerState.State newState)
@@ -336,7 +341,7 @@ public class GameManager : MonoBehaviour
         if (aliveRoles.Count == 1)
         {
             var lastPlayer = aliveRoles.FirstOrDefault();
-            if (lastPlayer?.CurrentRole == RoleType.Renegade)
+            if (lastPlayer.CurrentRole == RoleType.Renegade)
             {
                 EndGame("Renegade");
                 return;
@@ -350,7 +355,7 @@ public class GameManager : MonoBehaviour
         _gameInProgress = false;
 
         Debug.Log($"Game ended. Winner: {winningTeam}");
-        NetworkGameEvents.Instance?.RpcGameOver(winningTeam);
+        NetworkGameEvents.Instance.RpcGameOver(winningTeam);
     }
 
     public void ForceEndGame()
@@ -365,6 +370,7 @@ public class GameManager : MonoBehaviour
     {
         _currentGameState = GameState.Waiting;
         _gameInProgress = false;
+        _clientsSceneLoadedCount = 0;
         _players.Clear();
         _playerRoles.Clear();
         _playerStableIndices.Clear();
@@ -394,4 +400,7 @@ public class GameManager : MonoBehaviour
 
     #endregion
     
+    private void OnSceneLoadedMessage(SceneLoadedMessage msg) {
+        NetworkGameEvents.Instance.RpcSceneLoaded();
+    }
 }

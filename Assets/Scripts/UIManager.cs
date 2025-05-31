@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RedstoneinventeGameStudio;
 using TMPro;
 using UnityEngine;
 
@@ -9,8 +10,15 @@ public class UIManager : MonoBehaviour
     [SerializeField] private List<PlayerRoleMapping> playerRoleMappings = new List<PlayerRoleMapping>();
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI gameOverText;
-    [SerializeField] private GameObject awakeObject;
 
+    [SerializeField] private List<CardManager> slots;
+
+
+    private bool _cursorLocked;
+    [SerializeField] private KeyCode lockKeyCode = KeyCode.LeftAlt;
+
+    private UIState _uiState = UIState.Menu;
+    
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -23,12 +31,20 @@ public class UIManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         
         if (gameOverPanel) gameOverPanel.SetActive(false);
-        if (awakeObject) awakeObject.SetActive(true);
         
         RoomManager.HostStopped += OnNetworkStopped;
         RoomManager.ClientStopped += OnNetworkStopped;
+        RoomManager.GameStarted += OnGameStarted;
     }
 
+    private void Update()
+    {
+        // Можно оставить блокировку по клавише, если нужно
+        if (Input.GetKeyDown(lockKeyCode) && _uiState==UIState.HUD)
+        {
+            LockCursor(!_cursorLocked);
+        }
+    }
 
     public void OnRoleChanged(RoleType newRole)
     {
@@ -42,8 +58,7 @@ public class UIManager : MonoBehaviour
     {
         gameOverPanel.SetActive(true);
         gameOverText.text = gameoverText;
-        Cursor.visible = true;
-        Cursor.lockState=CursorLockMode.None;
+        LockCursor(false);
     }
     private void OnNetworkStopped()
     {
@@ -55,9 +70,27 @@ public class UIManager : MonoBehaviour
         }
 
         OnRoleChanged(RoleType.None);
-        
-        Cursor.visible = true;
-        Cursor.lockState=CursorLockMode.None;
+        _uiState = UIState.Menu;
+        LockCursor(false);
+    }
+    private void OnGameStarted()
+    {
+        _uiState = UIState.HUD;
+    }
+    public void LockCursor(bool locked)
+    {
+        if (locked)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+            _cursorLocked = true;
+        }
+        else
+        {
+            Cursor.visible = true;
+            Cursor.lockState=CursorLockMode.None;
+            _cursorLocked = false;
+        }
     }
 }
 
@@ -66,4 +99,10 @@ public class PlayerRoleMapping
 {
     public RoleType playerRole;
     public GameObject gameObject; 
+}
+
+public enum UIState
+{
+    Menu,
+    HUD
 }
