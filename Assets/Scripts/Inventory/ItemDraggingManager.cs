@@ -1,9 +1,12 @@
+using System;
 using UnityEngine;
 
 namespace RedstoneinventeGameStudio
 {
     public class ItemDraggingManager : MonoBehaviour
     {
+        public static ItemDraggingManager Instance;
+        
         public static CardManager dragCard;
 
         public static CardManager fromCard;
@@ -11,6 +14,20 @@ namespace RedstoneinventeGameStudio
 
         [SerializeField] Vector3 tooltipOffset;
         [SerializeField] Vector3 draggingCardOffset;
+
+
+        private void Awake()
+        {
+            if (Instance == null)
+            {
+                Instance = this;
+                DontDestroyOnLoad(gameObject);
+            }
+            else
+            {
+                Destroy(gameObject);
+            }
+        }
 
         private void Update()
         {
@@ -40,7 +57,7 @@ namespace RedstoneinventeGameStudio
             }
 
             dragCard.transform.position = Input.mousePosition + draggingCardOffset;
-            TooltipManagerInventory.instance.transform.position = Input.mousePosition + tooltipOffset;
+            TooltipManagerInventory.Instance.transform.position = Input.mousePosition + tooltipOffset;
         }
     }
 

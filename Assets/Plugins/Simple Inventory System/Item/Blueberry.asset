@@ -16,4 +16,4 @@ MonoBehaviour:
   itemDescription: A ripe, deep-blue blueberry, bursting with sweet and slightly
     tart flavor. A refreshing and healthy treat.
   itemTooltip: Restores 5 Hunger
-  itemIcon: {fileID: 21300000, guid: 055db8ce6c926124bacbb3216f40ac4a, type: 3}
+  itemIcon: {fileID: 21300000, guid: 13ba34da9011744c884f459ce4699444, type: 3}
