@@ -2,8 +2,7 @@ using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 
-namespace RedstoneinventeGameStudio
-{
+
     public class TooltipManagerInventory : MonoBehaviour
     {
         public static TooltipManagerInventory Instance;
@@ -38,4 +37,3 @@ namespace RedstoneinventeGameStudio
             Instance.gameObject.SetActive(false);
         }
     }
-}

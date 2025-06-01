@@ -3,8 +3,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace RedstoneinventeGameStudio
-{
     public class CardManager : MonoBehaviour, IPointerDownHandler, IPointerEnterHandler, IPointerExitHandler
     {
 #nullable enable
@@ -107,5 +105,4 @@ namespace RedstoneinventeGameStudio
             emptyCard.SetActive(!isOccupied);
         }
     }
-
-}
+    

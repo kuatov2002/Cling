@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using RedstoneinventeGameStudio;
 using TMPro;
 using UnityEngine;
 
@@ -93,11 +92,11 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void UpdateInventoryUI(InventoryItemData[] slots)
+    public void UpdateInventoryUI(BaseItem[] slots)
     {
         for (int i = 0; i < slots.Length && i < slotsUI.Length; i++)
         {
-            slotsUI[i].SetItem(slots[i]);
+            slotsUI[i].SetItem(slots[i].Data);
         }
     }
 }

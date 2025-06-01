@@ -542,6 +542,7 @@ Transform:
   - {fileID: 5548219211156043638}
   - {fileID: 5023376924468937457}
   - {fileID: 6645485187001646692}
+  - {fileID: 1772771319917485723}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &6453782203777622406
@@ -847,13 +848,62 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   inventorySlots:
-  - {fileID: 11400000, guid: 6315a301620e89f4eb709329958b7b6b, type: 2}
-  - {fileID: 0}
-  - {fileID: 11400000, guid: 78c513248140437459eb5e5779497458, type: 2}
-  - {fileID: 0}
-  - {fileID: 11400000, guid: 7f36a77254c1ca648a9171566729448c, type: 2}
+  - {fileID: 305135905409888150}
+  - {fileID: 305135905409888150}
+  - {fileID: 305135905409888150}
+  - {fileID: 305135905409888150}
+  - {fileID: 305135905409888150}
   activeItemIndex: 0
   hotkeys: 3100000032000000330000003400000035000000
+--- !u!1 &6129816887108654913
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1772771319917485723}
+  - component: {fileID: 305135905409888150}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1772771319917485723
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6129816887108654913}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.38523272, y: 1.1745529, z: 2.256246}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4843741509908108608}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &305135905409888150
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6129816887108654913}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a0b751533f001e4bac8f70a9f242094, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  data: {fileID: 11400000, guid: 44445d70e33ee7f40a52f366b1438495, type: 2}
+  healAmount: 50
 --- !u!1 &7472770470738815705
 GameObject:
   m_ObjectHideFlags: 0

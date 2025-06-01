@@ -1,8 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace RedstoneinventeGameStudio
-{
+
     public class ItemDraggingManager : MonoBehaviour
     {
         public static ItemDraggingManager Instance;
@@ -60,5 +59,4 @@ namespace RedstoneinventeGameStudio
             TooltipManagerInventory.Instance.transform.position = Input.mousePosition + tooltipOffset;
         }
     }
-
-}
+    

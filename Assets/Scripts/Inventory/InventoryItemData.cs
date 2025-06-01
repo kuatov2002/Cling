@@ -1,7 +1,6 @@
 using UnityEngine;
 
-namespace RedstoneinventeGameStudio
-{
+
     [CreateAssetMenu(fileName = "Inventory Item", menuName = "Inventory Item")]
     public class InventoryItemData : ScriptableObject
     {
@@ -11,4 +10,3 @@ namespace RedstoneinventeGameStudio
         public string itemTooltip;
         public Sprite itemIcon;
     }
-}

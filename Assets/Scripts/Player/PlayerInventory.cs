@@ -1,12 +1,11 @@
 using Mirror;
 using UnityEngine;
 
-namespace RedstoneinventeGameStudio
-{
+
     public class PlayerInventory : NetworkBehaviour
     {
         [Header("Inventory Configuration")]
-        [SerializeField] private InventoryItemData[] inventorySlots;
+        [SerializeField] private BaseItem[] inventorySlots;
 
         [Header("Active Item Display")]
         [SerializeField] private int activeItemIndex = 0;
@@ -17,12 +16,12 @@ namespace RedstoneinventeGameStudio
             KeyCode.Alpha4, KeyCode.Alpha5
         };
 
-        public InventoryItemData CurrentActiveSlot => 
+        public BaseItem CurrentActiveSlot => 
             inventorySlots != null && activeItemIndex < inventorySlots.Length 
                 ? inventorySlots[activeItemIndex] 
                 : null;
 
-        public InventoryItemData CurrentActiveItem => 
+        public BaseItem CurrentActiveItem => 
             CurrentActiveSlot;
 
         public int ActiveItemIndex => activeItemIndex;
@@ -71,7 +70,7 @@ namespace RedstoneinventeGameStudio
             UIManager.Instance?.UpdateInventoryUI(inventorySlots);
         }
 
-        public bool AddItem(InventoryItemData item)
+        public bool AddItem(BaseItem item)
         {
             if (item == null) return false;
 
@@ -116,7 +115,7 @@ namespace RedstoneinventeGameStudio
 
         protected virtual void OnActiveItemChanged()
         {
-            string itemName = CurrentActiveItem.itemName ?? "None";
+            string itemName = CurrentActiveItem.Data.itemName ?? "None";
             Debug.Log($"Active item changed to: {itemName} (Index: {activeItemIndex})");
         }
 
@@ -134,7 +133,7 @@ namespace RedstoneinventeGameStudio
 
         // Network synchronization methods
         [ClientRpc]
-        public void RpcSyncInventory(InventoryItemData[] items)
+        public void RpcSyncInventory(BaseItem[] items)
         {
             if (inventorySlots == null) return;
 
@@ -157,12 +156,12 @@ namespace RedstoneinventeGameStudio
         }
 
         [Command]
-        public void CmdAddItem(InventoryItemData item)
+        public void CmdAddItem(BaseItem item)
         {
             if (AddItem(item))
             {
                 // Sync to all clients
-                var items = new InventoryItemData[inventorySlots.Length];
+                var items = new BaseItem[inventorySlots.Length];
                 for (int i = 0; i < inventorySlots.Length; i++)
                 {
                     items[i] = inventorySlots[i];
@@ -171,4 +170,3 @@ namespace RedstoneinventeGameStudio
             }
         }
     }
-}
