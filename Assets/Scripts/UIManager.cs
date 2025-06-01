@@ -11,7 +11,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI gameOverText;
 
-    [SerializeField] private List<CardManager> slots;
+    [SerializeField] private CardManager[] slotsUI;
 
 
     private bool _cursorLocked;
@@ -90,6 +90,14 @@ public class UIManager : MonoBehaviour
             Cursor.visible = true;
             Cursor.lockState=CursorLockMode.None;
             _cursorLocked = false;
+        }
+    }
+
+    public void UpdateInventoryUI(InventoryItemData[] slots)
+    {
+        for (int i = 0; i < slots.Length && i < slotsUI.Length; i++)
+        {
+            slotsUI[i].SetItem(slots[i]);
         }
     }
 }

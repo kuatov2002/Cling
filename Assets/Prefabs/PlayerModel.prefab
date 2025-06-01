@@ -516,6 +516,7 @@ GameObject:
   - component: {fileID: 8476312223762065770}
   - component: {fileID: 5044194297134344192}
   - component: {fileID: 329028914541465278}
+  - component: {fileID: 3963638173722459571}
   m_Layer: 0
   m_Name: PlayerModel
   m_TagString: Player
@@ -830,6 +831,29 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   text: {fileID: 7802819277807473785}
+--- !u!114 &3963638173722459571
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 620c9cd65b105ad4396253b773936a5e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  inventorySlots:
+  - {fileID: 11400000, guid: 6315a301620e89f4eb709329958b7b6b, type: 2}
+  - {fileID: 0}
+  - {fileID: 11400000, guid: 78c513248140437459eb5e5779497458, type: 2}
+  - {fileID: 0}
+  - {fileID: 11400000, guid: 7f36a77254c1ca648a9171566729448c, type: 2}
+  activeItemIndex: 0
+  hotkeys: 3100000032000000330000003400000035000000
 --- !u!1 &7472770470738815705
 GameObject:
   m_ObjectHideFlags: 0
