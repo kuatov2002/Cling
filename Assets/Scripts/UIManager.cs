@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
@@ -9,7 +10,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private List<PlayerRoleMapping> playerRoleMappings = new List<PlayerRoleMapping>();
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI gameOverText;
-
+    [SerializeField] private Image gunCooldown;
     [SerializeField] private CardManager[] slotsUI;
 
 
@@ -39,12 +40,13 @@ public class UIManager : MonoBehaviour
     private void Update()
     {
         // Можно оставить блокировку по клавише, если нужно
-        if (Input.GetKeyDown(lockKeyCode) && _uiState==UIState.HUD)
+        if (Input.GetKeyDown(lockKeyCode) && _uiState == UIState.HUD)
         {
             LockCursor(!_cursorLocked);
         }
     }
 
+    
     public void OnRoleChanged(RoleType newRole)
     {
         foreach (var roleMapping in playerRoleMappings)
@@ -59,6 +61,7 @@ public class UIManager : MonoBehaviour
         gameOverText.text = gameoverText;
         LockCursor(false);
     }
+
     private void OnNetworkStopped()
     {
         // Деактивируем панель при остановке хоста или клиента
@@ -72,10 +75,12 @@ public class UIManager : MonoBehaviour
         _uiState = UIState.Menu;
         LockCursor(false);
     }
+
     private void OnGameStarted()
     {
         _uiState = UIState.HUD;
     }
+
     public void LockCursor(bool locked)
     {
         if (locked)
@@ -87,11 +92,16 @@ public class UIManager : MonoBehaviour
         else
         {
             Cursor.visible = true;
-            Cursor.lockState=CursorLockMode.None;
+            Cursor.lockState = CursorLockMode.None;
             _cursorLocked = false;
         }
     }
 
+    public void UpdateGunCooldown(float cooldown)
+    {
+        gunCooldown.fillAmount = Mathf.Clamp01(cooldown);
+    }
+    
     public void UpdateInventoryUI(BaseItem[] slots)
     {
         if (slots == null || slotsUI == null) return;

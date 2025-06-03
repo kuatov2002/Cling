@@ -1,3 +1,4 @@
+using System;
 using Mirror;
 using Unity.Cinemachine;
 using UnityEngine;
@@ -9,8 +10,18 @@ public class Gun : NetworkBehaviour
     [SerializeField] private float cooldown = 0.5f;
     [SerializeField] private LineRenderer bulletTrajectory;
     
-    private float _lastFireTime = 0f;
+    private float _lastFireTime = -Mathf.Infinity;
     private bool isCharged = false;
+
+    private void LateUpdate()
+    {
+        // Вычисляем прогресс кулдауна от 0 до 1
+        float timeSinceLast = Time.time - _lastFireTime;
+        float cooldownProgress = Mathf.Clamp01(timeSinceLast / cooldown);
+        
+        // Передаём прогресс в UI: 0 — только что выстрелили, 1 — кулдаун окончен
+        UIManager.Instance.UpdateGunCooldown(cooldownProgress);
+    }
 
     public override void OnStartLocalPlayer()
     {
