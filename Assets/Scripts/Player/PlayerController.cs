@@ -9,15 +9,16 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField] private float moveSpeed;
     [SerializeField] private float jumpForce;
     [SerializeField] private LayerMask groundLayer;
-
+    [SerializeField] private Transform followTarget;
     [Header("Камера FreeLook")]
-    [SerializeField] private CinemachineCamera freeLookCam;
+    
 
     [SerializeField] private Gun gun;
 
     private Rigidbody _rb;
     private bool _isGrounded;
-
+    private CinemachineCamera freeLookCam;
+    private Vector2 _look;
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
@@ -34,8 +35,8 @@ public class PlayerMovement : NetworkBehaviour
 
         if (freeLookCam != null)
         {
-            freeLookCam.Follow = transform;
-            freeLookCam.LookAt = transform;
+            freeLookCam.Follow = followTarget;
+            freeLookCam.LookAt = followTarget;
         }
     }
 
@@ -52,12 +53,36 @@ public class PlayerMovement : NetworkBehaviour
 
         if (Input.GetButtonDown("Fire1"))
         {
-            gun.Charge();
+            if(gun.Charge())freeLookCam.Lens.FieldOfView = 30;
+            
         }
         if (Input.GetButtonUp("Fire1"))
         {
-            gun.Fire();
+            if(gun.Fire())freeLookCam.Lens.FieldOfView = 60;
         }
+
+        _look.x = Input.GetAxis("Mouse X");
+        _look.y = Input.GetAxis("Mouse Y");
+        followTarget.rotation *= Quaternion.AngleAxis(_look.x,Vector3.up);
+        followTarget.rotation *= Quaternion.AngleAxis(_look.y,Vector3.right);
+
+        var angles = followTarget.localEulerAngles;
+        angles.z = 0;
+
+        var angle = followTarget.localEulerAngles.x;
+
+        if (angle > 180 && angle < 340)
+        {
+            angles.x = 340;
+        }else if (angle < 180 && angle > 40)
+        {
+            angles.x = 40;
+        }
+
+        followTarget.localEulerAngles = angles;
+
+        transform.rotation = Quaternion.Euler(0, followTarget.rotation.eulerAngles.y, 0);
+        followTarget.localEulerAngles = new Vector3(angles.x, 0, 0);
     }
 
     private void FixedUpdate()
@@ -72,7 +97,7 @@ public class PlayerMovement : NetworkBehaviour
 
         Vector3 moveDirection = Vector3.zero;
 
-        if (isMoving && freeLookCam != null)
+        /*if (isMoving && freeLookCam != null)
         {
             // Получаем угол Y камеры
             float cameraYAngle = freeLookCam.transform.eulerAngles.y;
@@ -83,7 +108,7 @@ public class PlayerMovement : NetworkBehaviour
             // Поворачиваем игрока к направлению движения
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.2f);
-        }
+        }*/
 
         // Используем то же направление для движения
         Vector3 targetVelocity = moveDirection * moveSpeed;

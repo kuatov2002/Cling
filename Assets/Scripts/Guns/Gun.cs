@@ -28,17 +28,18 @@ public class Gun : NetworkBehaviour
         bulletTrajectory.enabled = false;
     }
     
-    public void Charge()
+    public bool Charge()
     {
-        if (Time.time - _lastFireTime < cooldown) return;
+        if (Time.time - _lastFireTime < cooldown) return false;
         isCharged = true;
         bulletTrajectory.enabled = true;
+        return true;
     }
     
     [Client]
-    public void Fire()
+    public bool Fire()
     {
-        if (!isCharged) return;
+        if (!isCharged) return false;
         _lastFireTime = Time.time;
 
         // Берём направление «вперёд» от камеры...
@@ -53,6 +54,7 @@ public class Gun : NetworkBehaviour
         
         isCharged = false;
         bulletTrajectory.enabled = false;
+        return true;
     }
 
     [Command]
