@@ -4,12 +4,21 @@ using UnityEngine;
 public class PlayerRotation : MonoBehaviour
 {
     [Header("Настройки вращения")]
-    [SerializeField] private float mouseSensitivity = 100f; // Чувствительность мыши
-    [SerializeField] private bool smoothRotation = true; // Плавное вращение
-    [SerializeField] private float rotationSmoothTime = 0.1f; // Время плавности
+    [SerializeField] private float mouseSensitivity = 100f;
+    [SerializeField] private bool smoothRotation = true;
+    [SerializeField] private float rotationSmoothTime = 0.1f;
+    
+    [Header("Ограничения вертикального угла")]
+    [SerializeField] private float minVerticalAngle = -80f;
+    [SerializeField] private float maxVerticalAngle = 80f;
 
-    private float _yaw = 0f; // Горизонтальное вращение
+    private float _yaw = 0f;
+    private float _pitch = 0f;
     private float _currentRotationVelocity = 0f;
+    private float _currentPitchVelocity = 0f;
+
+    public float Pitch => _pitch;
+    public float Yaw => _yaw;
 
     private void Start()
     {
@@ -18,29 +27,29 @@ public class PlayerRotation : MonoBehaviour
 
     private void Update()
     {
-        RotatePlayer();
+        //RotatePlayer();
     }
 
     private void RotatePlayer()
     {
-        // Получаем ввод мыши
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 
-        // Обновляем yaw
         _yaw += mouseX;
-        _yaw = Mathf.Repeat(_yaw, 360); // Ограничиваем значениями 0-360
+        _yaw = Mathf.Repeat(_yaw, 360);
+        
+        _pitch -= mouseY;
+        _pitch = Mathf.Clamp(_pitch, minVerticalAngle, maxVerticalAngle);
 
-        // Плавное вращение
         if (smoothRotation)
         {
-            float targetRotation = _yaw;
-            float smoothedRotation = Mathf.SmoothDampAngle(
+            float smoothedYaw = Mathf.SmoothDampAngle(
                 transform.eulerAngles.y,
-                targetRotation,
+                _yaw,
                 ref _currentRotationVelocity,
                 rotationSmoothTime
             );
-            transform.eulerAngles = new Vector3(0f, smoothedRotation, 0f);
+            transform.eulerAngles = new Vector3(0f, smoothedYaw, 0f);
         }
         else
         {
