@@ -18,7 +18,7 @@ using UnityEngine.UI;
 
         private void Awake()
         {
-            if (useAsDrag)
+            if (useAsDrag && ItemDraggingManager.dragCard==null)
             {
                 ItemDraggingManager.dragCard = this;
                 isOccupied = true;
