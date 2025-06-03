@@ -19,6 +19,7 @@ public class Gun : NetworkBehaviour
     
     public void Charge()
     {
+        if (Time.time - _lastFireTime < cooldown) return;
         isCharged = true;
         bulletTrajectory.enabled = true;
     }
@@ -26,7 +27,7 @@ public class Gun : NetworkBehaviour
     [Client]
     public void Fire()
     {
-        if (Time.time - _lastFireTime < cooldown) return;
+        if (!isCharged) return;
         _lastFireTime = Time.time;
 
         // Берём направление «вперёд» от камеры...

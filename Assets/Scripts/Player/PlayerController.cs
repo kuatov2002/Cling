@@ -11,7 +11,7 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField] private LayerMask groundLayer;
 
     [Header("Камера FreeLook")]
-    [SerializeField] private CinemachineCamera freeLookCam; // Добавляем ссылку на FreeLook
+    [SerializeField] private CinemachineCamera freeLookCam;
 
     [SerializeField] private Gun gun;
 
@@ -27,7 +27,6 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
 
-        // Если ссылка не выставлена в инспекторе, ищем динамически
         if (freeLookCam == null)
         {
             freeLookCam = FindObjectOfType<CinemachineCamera>();
@@ -71,21 +70,23 @@ public class PlayerMovement : NetworkBehaviour
         Vector3 inputVector = new Vector3(horizontal, 0f, vertical).normalized;
         bool isMoving = inputVector.magnitude > 0.01f;
 
-        // Если двигаемся, поворачиваем игрока к направлению движения, используя угол камеры
+        Vector3 moveDirection = Vector3.zero;
+
         if (isMoving && freeLookCam != null)
         {
-            // Получаем угол Y камеры (по оси world Y)
+            // Получаем угол Y камеры
             float cameraYAngle = freeLookCam.transform.eulerAngles.y;
-            // Направление движения относительно ВРАЩЕНИЯ камеры
-            Vector3 moveDir = Quaternion.Euler(0f, cameraYAngle, 0f) * new Vector3(horizontal, 0f, vertical);
-            // Поворачиваем тело игрока плавно или мгновенно (можно сглаживать через Slerp)
-            Quaternion targetRotation = Quaternion.LookRotation(moveDir, Vector3.up);
+            
+            // Направление движения относительно камеры
+            moveDirection = Quaternion.Euler(0f, cameraYAngle, 0f) * inputVector;
+            
+            // Поворачиваем игрока к направлению движения
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.2f);
         }
 
-        // Переводим в локальные координаты объекта
-        Vector3 movement = transform.TransformDirection(inputVector);
-        Vector3 targetVelocity = movement * moveSpeed;
+        // Используем то же направление для движения
+        Vector3 targetVelocity = moveDirection * moveSpeed;
         _rb.linearVelocity = new Vector3(targetVelocity.x, _rb.linearVelocity.y, targetVelocity.z);
 
         _isGrounded = Physics.Raycast(transform.position, Vector3.down, 1.2f, groundLayer);
