@@ -1,172 +1,193 @@
 using Mirror;
 using UnityEngine;
 
+public class PlayerInventory : NetworkBehaviour
+{
+    [Header("Inventory Configuration")]
+    [SerializeField] private BaseItem[] inventorySlots;
 
-    public class PlayerInventory : NetworkBehaviour
+    [Header("Active Item Display")]
+    [SerializeField] private int activeItemIndex = 0;
+
+    [Header("Input")]
+    [SerializeField] private KeyCode[] hotkeys = {
+        KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3,
+        KeyCode.Alpha4, KeyCode.Alpha5
+    };
+    [SerializeField] private KeyCode useItemKey = KeyCode.E;
+
+    public BaseItem CurrentActiveSlot => 
+        inventorySlots != null && activeItemIndex < inventorySlots.Length 
+            ? inventorySlots[activeItemIndex] 
+            : null;
+
+    public BaseItem CurrentActiveItem => CurrentActiveSlot;
+
+    public int ActiveItemIndex => activeItemIndex;
+
+    private void Start()
     {
-        [Header("Inventory Configuration")]
-        [SerializeField] private BaseItem[] inventorySlots;
+        if (!isLocalPlayer) return;
+        
+        UpdateActiveItem();
+    }
 
-        [Header("Active Item Display")]
-        [SerializeField] private int activeItemIndex = 0;
+    private void Update()
+    {
+        if (!isLocalPlayer) return;
+        
+        HandleHotkeyInput();
+        HandleUseItemInput();
+    }
 
-        [Header("Input")]
-        [SerializeField] private KeyCode[] hotkeys = {
-            KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3,
-            KeyCode.Alpha4, KeyCode.Alpha5
-        };
-
-        public BaseItem CurrentActiveSlot => 
-            inventorySlots != null && activeItemIndex < inventorySlots.Length 
-                ? inventorySlots[activeItemIndex] 
-                : null;
-
-        public BaseItem CurrentActiveItem => 
-            CurrentActiveSlot;
-
-        public int ActiveItemIndex => activeItemIndex;
-        private void Start()
+    private void HandleHotkeyInput()
+    {
+        for (int i = 0; i < hotkeys.Length && i < inventorySlots.Length; i++)
         {
-            if (!isLocalPlayer) return;
-            
-            UpdateActiveItem();
-        }
-
-        private void Update()
-        {
-            if (!isLocalPlayer) return;
-            
-            HandleHotkeyInput();
-        }
-
-
-        private void HandleHotkeyInput()
-        {
-            for (int i = 0; i < hotkeys.Length && i < inventorySlots.Length; i++)
+            if (Input.GetKeyDown(hotkeys[i]))
             {
-                if (Input.GetKeyDown(hotkeys[i]))
-                {
-                    SetActiveItem(i);
-                    break;
-                }
-            }
-        }
-
-        private void SetActiveItem(int index)
-        {
-            if (index < 0 || index >= inventorySlots.Length)
-            {
-                Debug.LogWarning($"Invalid inventory index: {index}");
-                return;
-            }
-
-            activeItemIndex = index;
-            UpdateActiveItem();
-        }
-
-        private void UpdateActiveItem()
-        {
-            OnActiveItemChanged();
-            UIManager.Instance?.UpdateInventoryUI(inventorySlots);
-        }
-
-        public bool AddItem(BaseItem item)
-        {
-            if (item == null) return false;
-
-            for (int i = 0; i < inventorySlots.Length; i++)
-            {
-                if (inventorySlots[i] != null)
-                {
-                    bool success = inventorySlots[i];
-                    if (success)
-                    {
-                        if (i == activeItemIndex)
-                        {
-                            UpdateActiveItem();
-                        }
-                        UIManager.Instance?.UpdateInventoryUI(inventorySlots);
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public bool RemoveItem(int slotIndex)
-        {
-            if (slotIndex < 0 || slotIndex >= inventorySlots.Length || 
-                inventorySlots[slotIndex] == null)
-            {
-                return false;
-            }
-
-            inventorySlots[slotIndex]=null;
-            
-            if (slotIndex == activeItemIndex)
-            {
-                UpdateActiveItem();
-            }
-            
-            UIManager.Instance?.UpdateInventoryUI(inventorySlots);
-            return true;
-        }
-
-        protected virtual void OnActiveItemChanged()
-        {
-            string itemName = CurrentActiveItem.Data.itemName ?? "None";
-            Debug.Log($"Active item changed to: {itemName} (Index: {activeItemIndex})");
-        }
-
-        public void OnInventorySlotChanged(int slotIndex)
-        {
-            if (slotIndex == activeItemIndex)
-            {
-                UpdateActiveItem();
-            }
-            else
-            {
-                UIManager.Instance.UpdateInventoryUI(inventorySlots);
-            }
-        }
-
-        // Network synchronization methods
-        [ClientRpc]
-        public void RpcSyncInventory(BaseItem[] items)
-        {
-            if (inventorySlots == null) return;
-
-            for (int i = 0; i < Mathf.Min(items.Length, inventorySlots.Length); i++)
-            {
-                if (inventorySlots[i] != null)
-                {
-                    if (items[i] != null)
-                    {
-                        inventorySlots[i] = items[i];
-                    }
-                    else
-                    {
-                        inventorySlots[i] = null;
-                    }
-                }
-            }
-            
-            UpdateActiveItem();
-        }
-
-        [Command]
-        public void CmdAddItem(BaseItem item)
-        {
-            if (AddItem(item))
-            {
-                // Sync to all clients
-                var items = new BaseItem[inventorySlots.Length];
-                for (int i = 0; i < inventorySlots.Length; i++)
-                {
-                    items[i] = inventorySlots[i];
-                }
-                RpcSyncInventory(items);
+                SetActiveItem(i);
+                break;
             }
         }
     }
+
+    private void HandleUseItemInput()
+    {
+        if (Input.GetKeyDown(useItemKey))
+        {
+            UseActiveItem();
+        }
+    }
+
+    private void UseActiveItem()
+    {
+        BaseItem activeItem = CurrentActiveItem;
+        if (activeItem && activeItem.CanUse())
+        {
+            CmdUseItem(activeItemIndex);
+        }
+    }
+
+    private void SetActiveItem(int index)
+    {
+        if (index < 0 || index >= inventorySlots.Length)
+        {
+            Debug.LogWarning($"Invalid inventory index: {index}");
+            return;
+        }
+
+        activeItemIndex = index;
+        UpdateActiveItem();
+    }
+
+    private void UpdateActiveItem()
+    {
+        OnActiveItemChanged();
+        UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+    }
+
+    public bool AddItem(BaseItem item)
+    {
+        if (!item) return false;
+
+        for (int i = 0; i < inventorySlots.Length; i++)
+        {
+            if (!inventorySlots[i])
+            {
+                inventorySlots[i] = item;
+                if (i == activeItemIndex)
+                {
+                    UpdateActiveItem();
+                }
+
+                UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool RemoveItem(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= inventorySlots.Length || 
+            inventorySlots[slotIndex] == null)
+        {
+            return false;
+        }
+
+        inventorySlots[slotIndex] = null;
+        
+        if (slotIndex == activeItemIndex)
+        {
+            UpdateActiveItem();
+        }
+        
+        UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+        return true;
+    }
+
+    protected virtual void OnActiveItemChanged()
+    {
+        string itemName = CurrentActiveItem?.Data?.itemName ?? "None";
+        Debug.Log($"Active item changed to: {itemName} (Index: {activeItemIndex})");
+    }
+
+    public void OnInventorySlotChanged(int slotIndex)
+    {
+        if (slotIndex == activeItemIndex)
+        {
+            UpdateActiveItem();
+        }
+        else
+        {
+            UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+        }
+    }
+
+    // Network synchronization methods
+    [ClientRpc]
+    public void RpcSyncInventory(BaseItem[] items)
+    {
+        if (inventorySlots == null) return;
+
+        for (int i = 0; i < Mathf.Min(items.Length, inventorySlots.Length); i++)
+        {
+            inventorySlots[i] = items[i];
+        }
+        
+        UpdateActiveItem();
+    }
+
+    [Command]
+    public void CmdAddItem(BaseItem item)
+    {
+        if (AddItem(item))
+        {
+            var items = new BaseItem[inventorySlots.Length];
+            for (int i = 0; i < inventorySlots.Length; i++)
+            {
+                items[i] = inventorySlots[i];
+            }
+
+            RpcSyncInventory(items);
+        }
+    }
+    
+    [Command]
+    private void CmdUseItem(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= inventorySlots.Length || 
+            !inventorySlots[slotIndex])
+            return;
+
+        BaseItem item = inventorySlots[slotIndex];
+        if (item.CanUse())
+        {
+            item.Use();
+            inventorySlots[slotIndex] = null;
+            RpcSyncInventory(inventorySlots);
+        }
+    }
+}

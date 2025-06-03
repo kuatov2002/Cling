@@ -94,9 +94,18 @@ public class UIManager : MonoBehaviour
 
     public void UpdateInventoryUI(BaseItem[] slots)
     {
+        if (slots == null || slotsUI == null) return;
+    
         for (int i = 0; i < slots.Length && i < slotsUI.Length; i++)
         {
-            slotsUI[i].SetItem(slots[i].Data);
+            if (slots[i] != null && slots[i].Data != null)
+            {
+                slotsUI[i].SetItem(slots[i].Data);
+            }
+            else
+            {
+                slotsUI[i].UnSetItem(); // Очищаем слот UI
+            }
         }
     }
 }

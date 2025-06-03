@@ -12,10 +12,13 @@ public class Beer : BaseItem
             return;
         }
         
-        PlayerHealth playerHealth = GetComponent<PlayerHealth>();
-        if (playerHealth != null)
+        // Get the player through connection authority
+        GameObject player = connectionToClient.identity.gameObject;
+        PlayerHealth playerHealth = player.GetComponent<PlayerHealth>();
+        
+        if (playerHealth)
         {
-            playerHealth.TakeDamage(healAmount*(-1));
+            playerHealth.TakeDamage(-healAmount); // Negative damage = healing
             Debug.Log($"Used {data.itemName} - Healed for {healAmount}");
         }
     }
