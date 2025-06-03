@@ -22,20 +22,17 @@ public class PlayerInventory : NetworkBehaviour
             : null;
 
     public BaseItem CurrentActiveItem => CurrentActiveSlot;
-
     public int ActiveItemIndex => activeItemIndex;
 
     private void Start()
     {
         if (!isLocalPlayer) return;
-        
         UpdateActiveItem();
     }
 
     private void Update()
     {
         if (!isLocalPlayer) return;
-        
         HandleHotkeyInput();
         HandleUseItemInput();
     }
@@ -84,7 +81,11 @@ public class PlayerInventory : NetworkBehaviour
     private void UpdateActiveItem()
     {
         OnActiveItemChanged();
-        UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+        // Обновляем UI только для локального игрока
+        if (isLocalPlayer)
+        {
+            UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+        }
     }
 
     public bool AddItem(BaseItem item)
@@ -101,7 +102,10 @@ public class PlayerInventory : NetworkBehaviour
                     UpdateActiveItem();
                 }
 
-                UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+                if (isLocalPlayer)
+                {
+                    UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+                }
                 return true;
             }
         }
@@ -124,7 +128,10 @@ public class PlayerInventory : NetworkBehaviour
             UpdateActiveItem();
         }
         
-        UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+        if (isLocalPlayer)
+        {
+            UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+        }
         return true;
     }
 
@@ -140,15 +147,15 @@ public class PlayerInventory : NetworkBehaviour
         {
             UpdateActiveItem();
         }
-        else
+        else if (isLocalPlayer)
         {
             UIManager.Instance?.UpdateInventoryUI(inventorySlots);
         }
     }
 
-    // Network synchronization methods
-    [ClientRpc]
-    public void RpcSyncInventory(BaseItem[] items)
+    // ИСПРАВЛЕННЫЕ методы сетевой синхронизации
+    [TargetRpc]
+    private void TargetSyncInventory(NetworkConnection target, BaseItem[] items)
     {
         if (inventorySlots == null) return;
 
@@ -171,7 +178,8 @@ public class PlayerInventory : NetworkBehaviour
                 items[i] = inventorySlots[i];
             }
 
-            RpcSyncInventory(items);
+            // Отправляем только владельцу объекта
+            TargetSyncInventory(connectionToClient, items);
         }
     }
     
@@ -187,7 +195,9 @@ public class PlayerInventory : NetworkBehaviour
         {
             item.Use();
             inventorySlots[slotIndex] = null;
-            RpcSyncInventory(inventorySlots);
+            
+            // Отправляем обновленный инвентарь только владельцу
+            TargetSyncInventory(connectionToClient, inventorySlots);
         }
     }
 }
