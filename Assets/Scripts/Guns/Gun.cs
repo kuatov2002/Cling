@@ -7,9 +7,22 @@ public class Gun : NetworkBehaviour
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private float damage = 20f;
     [SerializeField] private float cooldown = 0.5f;
-
+    [SerializeField] private LineRenderer bulletTrajectory;
+    
     private float _lastFireTime = 0f;
+    private bool isCharged = false;
 
+    public override void OnStartLocalPlayer()
+    {
+        bulletTrajectory.enabled = false;
+    }
+    
+    public void Charge()
+    {
+        isCharged = true;
+        bulletTrajectory.enabled = true;
+    }
+    
     [Client]
     public void Fire()
     {
@@ -25,6 +38,9 @@ public class Gun : NetworkBehaviour
 
         // Отправляем уже «плоское» направление на сервер
         CmdFire(flatDir);
+        
+        isCharged = false;
+        bulletTrajectory.enabled = false;
     }
 
     [Command]

@@ -51,9 +51,13 @@ public class PlayerMovement : NetworkBehaviour
             _isGrounded = false;
         }
 
+        if (Input.GetButtonDown("Fire1"))
+        {
+            gun.Charge();
+        }
         if (Input.GetButtonUp("Fire1"))
         {
-            gun.Fire(); // Передаём камеру в метод Fire
+            gun.Fire();
         }
     }
 
