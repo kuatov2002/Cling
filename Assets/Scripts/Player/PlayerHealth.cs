@@ -1,10 +1,12 @@
 using Mirror;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerHealth : NetworkBehaviour, IDamageable
 {
     [SerializeField] private float maxHealth = 100f;
-
+    [SerializeField] private Image healthBar;
+    
     [SyncVar(hook = nameof(OnHealthChanged))]
     private float _currentHealth;
 
@@ -25,15 +27,15 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
     public void TakeDamage(float damage)
     {
         if (!isServer) return;
-        _currentHealth = Mathf.Max(0f, _currentHealth - damage);
+        _currentHealth = Mathf.Clamp(_currentHealth - damage, 0f, maxHealth);
         if (_currentHealth == 0f) Die();
     }
 
     private void OnHealthChanged(float oldValue, float newValue)
     {
-        if (!isLocalPlayer) return;  // обновляем UI только для своего игрока
+        if (healthBar) healthBar.fillAmount = newValue / maxHealth;
+        if (!isLocalPlayer) return;
         Debug.Log($"HP: {oldValue} → {newValue}");
-        // тут обновляем здоровье на экране
     }
 
     private void Die()
