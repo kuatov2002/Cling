@@ -7,12 +7,15 @@ public class Gun : NetworkBehaviour
     [SerializeField] private float damage = 20f;
     [SerializeField] private float cooldown = 0.5f;
     
-    private float _lastFireTime = -Mathf.Infinity;
+    [SyncVar] private float _lastFireTime = -Mathf.Infinity;
     private bool isCharged = false;
     private Camera playerCamera;
 
     private void LateUpdate()
     {
+        // Обновляем UI только для локального игрока
+        if (!isLocalPlayer) return;
+        
         float timeSinceLast = Time.time - _lastFireTime;
         float cooldownProgress = Mathf.Clamp01(timeSinceLast / cooldown);
         UIManager.Instance.UpdateGunCooldown(cooldownProgress);
@@ -34,8 +37,7 @@ public class Gun : NetworkBehaviour
     public bool Fire()
     {
         if (!isCharged) return false;
-        _lastFireTime = Time.time;
-
+        
         Vector3 shootDirection = GetShootDirection();
         CmdFire(shootDirection);
         
@@ -67,6 +69,9 @@ public class Gun : NetworkBehaviour
     [Command]
     private void CmdFire(Vector3 shootDirection)
     {
+        // Обновляем время выстрела на сервере
+        _lastFireTime = Time.time;
+        
         GameObject bullet = Instantiate(
             bulletPrefab, 
             transform.position, 
