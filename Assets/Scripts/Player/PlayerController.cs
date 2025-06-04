@@ -59,14 +59,12 @@ public class PlayerMovement : NetworkBehaviour
 
         if (Input.GetButtonDown("Fire1"))
         {
-            gun.Charge();
-            freeLookCam[0].gameObject.SetActive(false);
+            if (gun.Charge()) freeLookCam[0].gameObject.SetActive(false);
         }
 
         if (Input.GetButtonUp("Fire1"))
         {
-            gun.Fire();
-            freeLookCam[0].gameObject.SetActive(true);
+            if (gun.Fire()) freeLookCam[0].gameObject.SetActive(true);
         }
 
         _look.x = Input.GetAxis("Mouse X");

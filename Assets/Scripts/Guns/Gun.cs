@@ -23,22 +23,24 @@ public class Gun : NetworkBehaviour
         playerCamera = Camera.main;
     }
     
-    public void Charge()
+    public bool Charge()
     {
-        if (Time.time - _lastFireTime < cooldown) return;
+        if (Time.time - _lastFireTime < cooldown) return false;
         isCharged = true;
+        return true;
     }
     
     [Client]
-    public void Fire()
+    public bool Fire()
     {
-        if (!isCharged) return;
+        if (!isCharged) return false;
         _lastFireTime = Time.time;
 
         Vector3 shootDirection = GetShootDirection();
         CmdFire(shootDirection);
         
         isCharged = false;
+        return true;
     }
 
     private Vector3 GetShootDirection()
