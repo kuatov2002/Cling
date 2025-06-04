@@ -9184,7 +9184,7 @@ MonoBehaviour:
       Offset: {x: 0, y: 0}
   CenterOnActivate: 1
   TargetOffset: {x: 0, y: 0, z: 0}
-  Damping: {x: 0, y: 0}
+  Damping: {x: 0.15, y: 0.15}
   Lookahead:
     Enabled: 0
     Time: 0
@@ -9242,7 +9242,7 @@ Transform:
   m_GameObject: {fileID: 262509199}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.435, y: 2.862, z: -1.3}
+  m_LocalPosition: {x: 3.435, y: 2.862, z: 2.7116115}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -9266,7 +9266,7 @@ MonoBehaviour:
   CameraSide: 0.5
   CameraDistance: 4
   AvoidObstacles:
-    Enabled: 0
+    Enabled: 1
     CollisionFilter:
       serializedVersion: 2
       m_Bits: 1
@@ -15816,7 +15816,7 @@ Transform:
   m_GameObject: {fileID: 421999677}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.435, y: 2.862, z: -1.3}
+  m_LocalPosition: {x: 3.435, y: 2.862, z: 2.7116115}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -36364,7 +36364,7 @@ MonoBehaviour:
       Offset: {x: 0, y: 0}
   CenterOnActivate: 1
   TargetOffset: {x: 0, y: 0, z: 0}
-  Damping: {x: 0, y: 0}
+  Damping: {x: 0.15, y: 0.15}
   Lookahead:
     Enabled: 0
     Time: 0
@@ -36388,7 +36388,7 @@ MonoBehaviour:
   CameraSide: 0.5
   CameraDistance: 3
   AvoidObstacles:
-    Enabled: 0
+    Enabled: 1
     CollisionFilter:
       serializedVersion: 2
       m_Bits: 1
@@ -36448,7 +36448,7 @@ Transform:
   m_GameObject: {fileID: 970456336}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.435, y: 2.862, z: -0.29999995}
+  m_LocalPosition: {x: 3.435, y: 2.862, z: 2.7154644}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
