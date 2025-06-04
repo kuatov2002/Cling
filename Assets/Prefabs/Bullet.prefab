@@ -130,7 +130,7 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   speed: 100
-  lifeTime: 2
+  lifeTime: 6
 --- !u!54 &4283094814509313524
 Rigidbody:
   m_ObjectHideFlags: 0

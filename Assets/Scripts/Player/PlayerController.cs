@@ -1,3 +1,4 @@
+using System.Linq;
 using Mirror;
 using UnityEngine;
 using Unity.Cinemachine;
@@ -17,7 +18,7 @@ public class PlayerMovement : NetworkBehaviour
 
     private Rigidbody _rb;
     private bool _isGrounded;
-    private CinemachineCamera freeLookCam;
+    private CinemachineCamera[] freeLookCam;
     private Vector2 _look;
     private void Awake()
     {
@@ -28,15 +29,20 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
 
-        if (freeLookCam == null)
-        {
-            freeLookCam = FindObjectOfType<CinemachineCamera>();
-        }
 
-        if (freeLookCam != null)
+        freeLookCam = FindObjectsOfType<CinemachineCamera>();
+        freeLookCam = freeLookCam
+            .OrderByDescending(cam => cam.Priority.Value)
+            .ToArray();
+        
+        
+        foreach (var cam in freeLookCam)
         {
-            freeLookCam.Follow = followTarget;
-            freeLookCam.LookAt = followTarget;
+            if (cam)
+            {
+                cam.Follow = followTarget;
+                cam.LookAt = followTarget;
+            }
         }
     }
 
@@ -53,16 +59,18 @@ public class PlayerMovement : NetworkBehaviour
 
         if (Input.GetButtonDown("Fire1"))
         {
-            if(gun.Charge())freeLookCam.Lens.FieldOfView = 30;
-            
+            gun.Charge();
+            freeLookCam[0].gameObject.SetActive(false);
         }
+
         if (Input.GetButtonUp("Fire1"))
         {
-            if(gun.Fire())freeLookCam.Lens.FieldOfView = 60;
+            gun.Fire();
+            freeLookCam[0].gameObject.SetActive(true);
         }
 
         _look.x = Input.GetAxis("Mouse X");
-        _look.y = Input.GetAxis("Mouse Y");
+        _look.y = -Input.GetAxis("Mouse Y");
         followTarget.rotation *= Quaternion.AngleAxis(_look.x,Vector3.up);
         followTarget.rotation *= Quaternion.AngleAxis(_look.y,Vector3.right);
 
@@ -71,48 +79,41 @@ public class PlayerMovement : NetworkBehaviour
 
         var angle = followTarget.localEulerAngles.x;
 
-        if (angle > 180 && angle < 340)
+        if (angle > 180 && angle < 280)
         {
-            angles.x = 340;
-        }else if (angle < 180 && angle > 40)
+            angles.x = 300;
+        }else if (angle < 180 && angle > 70)
         {
-            angles.x = 40;
+            angles.x = 70;
         }
 
         followTarget.localEulerAngles = angles;
 
         transform.rotation = Quaternion.Euler(0, followTarget.rotation.eulerAngles.y, 0);
         followTarget.localEulerAngles = new Vector3(angles.x, 0, 0);
+        
+        float horizontal = Input.GetAxisRaw("Horizontal");
+        float vertical = Input.GetAxisRaw("Vertical");
+
+        Vector3 inputVector = new Vector3(horizontal, 0f, vertical).normalized;
+    
+        if (inputVector.magnitude > 0.01f)
+        {
+            Vector3 moveDirection = transform.TransformDirection(inputVector);
+            Vector3 targetVelocity = moveDirection * moveSpeed;
+            _rb.linearVelocity = new Vector3(targetVelocity.x, _rb.linearVelocity.y, targetVelocity.z);
+        }
+        else
+        {
+            _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0);
+        }
     }
 
     private void FixedUpdate()
     {
         if (!isLocalPlayer) return;
 
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
 
-        Vector3 inputVector = new Vector3(horizontal, 0f, vertical).normalized;
-        bool isMoving = inputVector.magnitude > 0.01f;
-
-        Vector3 moveDirection = Vector3.zero;
-
-        /*if (isMoving && freeLookCam != null)
-        {
-            // Получаем угол Y камеры
-            float cameraYAngle = freeLookCam.transform.eulerAngles.y;
-            
-            // Направление движения относительно камеры
-            moveDirection = Quaternion.Euler(0f, cameraYAngle, 0f) * inputVector;
-            
-            // Поворачиваем игрока к направлению движения
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 0.2f);
-        }*/
-
-        // Используем то же направление для движения
-        Vector3 targetVelocity = moveDirection * moveSpeed;
-        _rb.linearVelocity = new Vector3(targetVelocity.x, _rb.linearVelocity.y, targetVelocity.z);
 
         _isGrounded = Physics.Raycast(transform.position, Vector3.down, 1.2f, groundLayer);
     }
