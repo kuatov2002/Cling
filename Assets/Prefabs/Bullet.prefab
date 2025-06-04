@@ -129,7 +129,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  speed: 100
+  speed: 200
   lifeTime: 6
 --- !u!54 &4283094814509313524
 Rigidbody:
