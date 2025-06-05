@@ -6,18 +6,10 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
 {
     [SerializeField] private float maxHealth = 100f;
     [SerializeField] private Image healthBar;
-    
+
     [SyncVar(hook = nameof(OnHealthChanged))]
     private float _currentHealth;
 
-    private PlayerState _playerState;
-
-    private void Awake()
-    {
-        _playerState = GetComponent<PlayerState>();
-    }
-
-    // Инициализируется и на сервере, и на хост‑клиенте
     [ServerCallback]
     public override void OnStartServer()
     {
@@ -33,14 +25,13 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
 
     private void OnHealthChanged(float oldValue, float newValue)
     {
-        if (healthBar) healthBar.fillAmount = newValue / maxHealth;
-        if (!isLocalPlayer) return;
-        Debug.Log($"HP: {oldValue} → {newValue}");
+        if (healthBar)
+            healthBar.fillAmount = newValue / maxHealth;
     }
 
     private void Die()
     {
-        _playerState.CurrentState = PlayerState.State.Dead;
+        GetComponent<PlayerState>().CurrentState = PlayerState.State.Dead;
         Destroy(gameObject);
     }
 }

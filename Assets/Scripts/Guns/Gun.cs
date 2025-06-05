@@ -10,15 +10,28 @@ public class Gun : NetworkBehaviour
     [SyncVar] private float _lastFireTime = -Mathf.Infinity;
     private bool isCharged = false;
     private Camera playerCamera;
+    private float lastReportedProgress = -1f;
 
-    private void LateUpdate()
+    private void Start()
     {
-        // Обновляем UI только для локального игрока
-        if (!isLocalPlayer) return;
-        
-        float timeSinceLast = Time.time - _lastFireTime;
-        float cooldownProgress = Mathf.Clamp01(timeSinceLast / cooldown);
-        UIManager.Instance.UpdateGunCooldown(cooldownProgress);
+        if (isLocalPlayer)
+            StartCoroutine(CooldownUIRoutine());
+    }
+    
+    private System.Collections.IEnumerator CooldownUIRoutine()
+    {
+        while (true)
+        {
+            float timeSinceLast = Time.time - _lastFireTime;
+            float cooldownProgress = Mathf.Clamp01(timeSinceLast / cooldown);
+
+            if (Mathf.Abs(cooldownProgress - lastReportedProgress) > 0.01f)
+            {
+                UIManager.Instance.UpdateGunCooldown(cooldownProgress);
+                lastReportedProgress = cooldownProgress;
+            }
+            yield return new WaitForSeconds(0.05f);
+        }
     }
 
     public override void OnStartLocalPlayer()
@@ -47,19 +60,16 @@ public class Gun : NetworkBehaviour
 
     private Vector3 GetShootDirection()
     {
-        if (playerCamera == null)
-            playerCamera = Camera.main;
-
         Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0f));
         
         Vector3 targetPoint;
-        if (Physics.Raycast(ray, out RaycastHit hit, 1000f))
+        if (Physics.Raycast(ray, out RaycastHit hit, 300f))
         {
             targetPoint = hit.point;
         }
         else
         {
-            targetPoint = ray.origin + ray.direction * 1000f;
+            targetPoint = ray.origin + ray.direction * 300f;
         }
         
         Vector3 direction = (targetPoint - transform.position).normalized;

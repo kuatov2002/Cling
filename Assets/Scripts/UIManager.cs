@@ -97,10 +97,17 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    private float _lastFill = -1f;
     public void UpdateGunCooldown(float cooldown)
     {
-        gunCooldown.fillAmount = Mathf.Clamp01(cooldown);
+        float newFill = Mathf.Clamp01(cooldown);
+        if (Mathf.Abs(newFill - _lastFill) > 0.005f)
+        {
+            gunCooldown.fillAmount = newFill;
+            _lastFill = newFill;
+        }
     }
+
     
     public void UpdateInventoryUI(BaseItem[] slots)
     {

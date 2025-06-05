@@ -5,35 +5,38 @@ using UnityEngine;
 public class PlayerRole : NetworkBehaviour
 {
     [SerializeField] private GameObject sheriffStar;
-
-    private PlayerState _player; // Ссылка на PlayerState
-    public PlayerState Player => _player; // Свойство для доступа к PlayerState
+    private PlayerState _player; 
+    public PlayerState Player => _player;
 
     public event Action<RoleType> OnRoleChanged;
 
     [SyncVar(hook = nameof(OnRoleUpdated))]
-    private int _roleInt = 0;
+    private RoleType _currentRole = RoleType.None;
 
     public RoleType CurrentRole
     {
-        get => (RoleType)_roleInt;
+        get => _currentRole;
         set
         {
-            if (!isServer) return;
-
-            if (CurrentRole != value)
-            {
-                _roleInt = (int)value;
-                OnRoleChanged?.Invoke(value);
-            }
+            if (!isServer || _currentRole == value) return;
+            _currentRole = value;
+            // хук OnRoleUpdated автоматически вызовется на клиенте
+            OnRoleChanged?.Invoke(value); // если нужен оповещать на сервере
         }
+    }
+
+    private void OnRoleUpdated(RoleType oldRole, RoleType newRole)
+    {
+        UpdateSheriffStarVisibility(newRole);
+        if (isLocalPlayer && oldRole != newRole)
+            OnRoleChanged?.Invoke(newRole);
     }
 
     public override void OnStartClient()
     {
         base.OnStartClient();
-        _player = GetComponent<PlayerState>(); // Получаем PlayerState
-        UpdateSheriffStarVisibility((RoleType)_roleInt);
+        _player = GetComponent<PlayerState>();
+        UpdateSheriffStarVisibility(_currentRole);
     }
 
     public override void OnStartLocalPlayer()
@@ -41,6 +44,7 @@ public class PlayerRole : NetworkBehaviour
         base.OnStartLocalPlayer();
         OnRoleChanged += HandleRoleChanged;
         OnRoleChanged += UIManager.Instance.OnRoleChanged;
+        OnRoleChanged?.Invoke(_currentRole);
     }
 
     private void HandleRoleChanged(RoleType newRole)
@@ -48,25 +52,10 @@ public class PlayerRole : NetworkBehaviour
         Debug.Log($"Player role changed to: {newRole}");
     }
 
-    private void OnRoleUpdated(int oldValue, int newValue)
-    {
-        RoleType oldRole = (RoleType)oldValue;
-        RoleType newRole = (RoleType)newValue;
-
-        UpdateSheriffStarVisibility(newRole);
-
-        if (isLocalPlayer && oldRole != newRole)
-        {
-            OnRoleChanged?.Invoke(newRole);
-        }
-    }
-
     private void UpdateSheriffStarVisibility(RoleType role)
     {
         if (sheriffStar != null)
-        {
             sheriffStar.SetActive(role == RoleType.Sheriff);
-        }
     }
 
     private void OnDestroy()
@@ -75,12 +64,11 @@ public class PlayerRole : NetworkBehaviour
         {
             OnRoleChanged -= HandleRoleChanged;
             if (UIManager.Instance != null)
-            {
                 OnRoleChanged -= UIManager.Instance.OnRoleChanged;
-            }
         }
     }
 }
+
 public enum RoleType
 {
     None,
