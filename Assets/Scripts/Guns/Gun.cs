@@ -7,7 +7,9 @@ public class Gun : NetworkBehaviour
     [SerializeField] private float damage = 20f;
     [SerializeField] private float cooldown = 0.5f;
     
-    [SyncVar] private float _lastFireTime = -Mathf.Infinity;
+    [SyncVar(hook = nameof(OnLastFireTimeChanged))] 
+    private float _lastFireTime = -Mathf.Infinity;
+    
     private bool isCharged = false;
     private Camera playerCamera;
     private float lastReportedProgress = -1f;
@@ -22,7 +24,7 @@ public class Gun : NetworkBehaviour
     {
         while (true)
         {
-            float timeSinceLast = Time.time - _lastFireTime;
+            float timeSinceLast = (float)NetworkTime.time - _lastFireTime;
             float cooldownProgress = Mathf.Clamp01(timeSinceLast / cooldown);
 
             if (Mathf.Abs(cooldownProgress - lastReportedProgress) > 0.01f)
@@ -30,7 +32,7 @@ public class Gun : NetworkBehaviour
                 UIManager.Instance.UpdateGunCooldown(cooldownProgress);
                 lastReportedProgress = cooldownProgress;
             }
-            yield return new WaitForSeconds(0.05f);
+            yield return new WaitForSeconds(0.01f); // Более частое обновление
         }
     }
 
@@ -41,7 +43,7 @@ public class Gun : NetworkBehaviour
     
     public bool Charge()
     {
-        if (Time.time - _lastFireTime < cooldown) return false;
+        if ((float)NetworkTime.time - _lastFireTime < cooldown) return false;
         isCharged = true;
         return true;
     }
@@ -79,8 +81,7 @@ public class Gun : NetworkBehaviour
     [Command]
     private void CmdFire(Vector3 shootDirection)
     {
-        // Обновляем время выстрела на сервере
-        _lastFireTime = Time.time;
+        _lastFireTime = (float)NetworkTime.time; // Используем NetworkTime
         
         GameObject bullet = Instantiate(
             bulletPrefab, 
@@ -94,5 +95,10 @@ public class Gun : NetworkBehaviour
         {
             bulletComponent.RpcInitialize(shootDirection, damage);
         }
+    }
+
+    private void OnLastFireTimeChanged(float oldVal, float newVal)
+    {
+        lastReportedProgress = -1f; // Принудительное обновление UI
     }
 }
