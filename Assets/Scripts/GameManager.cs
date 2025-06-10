@@ -334,32 +334,30 @@ public class GameManager : MonoBehaviour
         var aliveRoles = _playerRoles.Where(r => r.Player.IsAlive).ToList();
 
         bool sheriffAlive = aliveRoles.Any(r => r.CurrentRole == RoleType.Sheriff);
+        bool anyOutlawAlive = aliveRoles.Any(r => r.CurrentRole == RoleType.Outlaw);
+        bool anyRenegadeAlive = aliveRoles.Any(r => r.CurrentRole == RoleType.Renegade);
+
+        // Check Renegade victory first (must be alone)
+        if (aliveRoles.Count == 1 && anyRenegadeAlive)
+        {
+            EndGame("Renegade");
+            return;
+        }
+
+        // Check Sheriff death (Outlaws and Renegades win)
         if (!sheriffAlive)
         {
             EndGame("Outlaws");
             return;
         }
 
-        bool anyOutlawAlive = aliveRoles.Any(r => r.CurrentRole == RoleType.Outlaw);
-        bool anyRenegadeAlive = aliveRoles.Any(r => r.CurrentRole == RoleType.Renegade);
-
+        // Check Sheriff victory (no Outlaws or Renegades left)
         if (!anyOutlawAlive && !anyRenegadeAlive)
         {
             EndGame("Sheriff");
             return;
         }
-
-        if (aliveRoles.Count == 1)
-        {
-            var lastPlayer = aliveRoles.FirstOrDefault();
-            if (lastPlayer.CurrentRole == RoleType.Renegade)
-            {
-                EndGame("Renegade");
-                return;
-            }
-        }
     }
-    
     private void EndGame(string winningTeam)
     {
         _currentGameState = GameState.Ended;
