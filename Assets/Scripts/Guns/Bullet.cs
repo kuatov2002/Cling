@@ -23,20 +23,29 @@ public class Bullet : NetworkBehaviour
     [ClientRpc]
     public void RpcInitialize(Vector3 dir, float dmg)
     {
-        _direction = dir;
+        _direction = dir.normalized;
         _damage = dmg;
     }
 
     private void Update()
     {
-        transform.position += _direction * (speed * Time.deltaTime);
-    }
+        float moveDistance = speed * Time.deltaTime;
+        Vector3 start = transform.position;
+        Vector3 end = start + _direction * moveDistance;
 
-    private void OnTriggerEnter(Collider other)
-    {
-        if (!isServer) return;
-        var target = other.GetComponent<IDamageable>();
-        target?.TakeDamage(_damage);
-        NetworkServer.Destroy(gameObject);
+        // Только сервер проверяет коллизии и наносит урон
+        if (isServer)
+        {
+            if (Physics.Raycast(start, _direction, out RaycastHit hit, moveDistance))
+            {
+                var target = hit.collider.GetComponent<IDamageable>();
+                target?.TakeDamage(_damage);
+                DestroySelf();
+                return;
+            }
+        }
+
+        // Все клиенты двигают пулю визуально
+        transform.position = end;
     }
 }
