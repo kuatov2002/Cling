@@ -234,7 +234,11 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log($"Roles assigned to {_playerRoles.Count} players");
-        NetworkGameEvents.Instance.RpcRolesAssigned();
+        
+        if (NetworkGameEvents.Instance != null)
+        {
+            NetworkGameEvents.Instance.RpcRolesAssigned();
+        }
     }
     
     private List<RoleType> GenerateRoleDistribution(int playerCount)
@@ -292,15 +296,22 @@ public class GameManager : MonoBehaviour
         _currentGameState = GameState.InProgress;
         _gameInProgress = true;
 
-        NetworkGameEvents.Instance.RpcGameInitialized();
+        if (NetworkGameEvents.Instance != null)
+        {
+            NetworkGameEvents.Instance.RpcGameInitialized();
+        }
         Debug.Log("Game initialized and in progress");
     }
     
-    public void OnClientSceneLoaded() {
+    public void OnClientSceneLoaded() 
+    {
+        if (!NetworkServer.active) return; // Only execute on server
+        
         _clientsSceneLoadedCount++;
         Debug.Log($"Clients loaded scene: {_clientsSceneLoadedCount}/{_players.Count}");
     
-        if (_clientsSceneLoadedCount == _players.Count && autoAssignRoles && CanAssignRoles()) {
+        if (_clientsSceneLoadedCount == _players.Count && autoAssignRoles && CanAssignRoles()) 
+        {
             AssignPlayerRoles();
         }
     }
@@ -355,7 +366,11 @@ public class GameManager : MonoBehaviour
         _gameInProgress = false;
 
         Debug.Log($"Game ended. Winner: {winningTeam}");
-        NetworkGameEvents.Instance.RpcGameOver(winningTeam);
+        
+        if (NetworkGameEvents.Instance != null)
+        {
+            NetworkGameEvents.Instance.RpcGameOver(winningTeam);
+        }
     }
 
     public void ForceEndGame()
@@ -400,7 +415,12 @@ public class GameManager : MonoBehaviour
 
     #endregion
     
-    private void OnSceneLoadedMessage(SceneLoadedMessage msg) {
-        NetworkGameEvents.Instance.RpcSceneLoaded();
+    private void OnSceneLoadedMessage(SceneLoadedMessage msg) 
+    {
+        // Only server should handle scene load notifications and send RPCs
+        if (NetworkServer.active && NetworkGameEvents.Instance != null)
+        {
+            NetworkGameEvents.Instance.RpcSceneLoaded();
+        }
     }
 }
