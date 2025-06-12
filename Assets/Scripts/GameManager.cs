@@ -24,6 +24,7 @@ public class GameManager : MonoBehaviour
 
     
     private int _clientsSceneLoadedCount = 0;
+
     public enum GameState
     {
         Waiting,
@@ -38,6 +39,9 @@ public class GameManager : MonoBehaviour
     {
         InitializeSingleton();
         Debug.Log("GameManager Awake");
+        
+        Application.targetFrameRate = 60;
+        QualitySettings.vSyncCount = 1;
     }
 
     private void Start()
