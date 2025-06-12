@@ -227,7 +227,7 @@ public class GameManager : MonoBehaviour
     
     private void AssignPlayerRoles()
     {
-        if (!CanAssignRoles()) return;
+        if (!CanAssignRoles() || !NetworkServer.active) return;
 
         List<RoleType> availableRoles = GenerateRoleDistribution(_playerRoles.Count);
         ShuffleRoles(availableRoles);
@@ -297,6 +297,9 @@ public class GameManager : MonoBehaviour
     
     private void InitializeGame()
     {
+        // Only execute on server
+        if (!NetworkServer.active) return;
+        
         _currentGameState = GameState.InProgress;
         _gameInProgress = true;
 
@@ -322,7 +325,7 @@ public class GameManager : MonoBehaviour
     
     private void HandlePlayerStateChanged(PlayerState.State newState)
     {
-        if (!_gameInProgress) return;
+        if (!_gameInProgress || !NetworkServer.active) return;
 
         if (newState == PlayerState.State.Dead)
         {
@@ -333,7 +336,7 @@ public class GameManager : MonoBehaviour
     
     private void CheckWinConditions()
     {
-        if (!_gameInProgress || _currentGameState != GameState.InProgress) return;
+        if (!_gameInProgress || _currentGameState != GameState.InProgress || !NetworkServer.active) return;
 
         var aliveRoles = _playerRoles.Where(r => r.Player.IsAlive).ToList();
 
@@ -362,8 +365,11 @@ public class GameManager : MonoBehaviour
             return;
         }
     }
+    
     private void EndGame(string winningTeam)
     {
+        if (!NetworkServer.active) return;
+        
         _currentGameState = GameState.Ended;
         _gameInProgress = false;
 
@@ -377,7 +383,7 @@ public class GameManager : MonoBehaviour
 
     public void ForceEndGame()
     {
-        if (_gameInProgress)
+        if (_gameInProgress && NetworkServer.active)
         {
             EndGame("Game Terminated");
         }

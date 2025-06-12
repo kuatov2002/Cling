@@ -81,9 +81,29 @@ public class RoomManager : NetworkRoomManager
         }
 
         Debug.Log("All players ready. Starting game...");
+        
+        // Notify server/host
         GameStarted?.Invoke();
         
+        // Send message to all clients
+        NetworkServer.SendToAll(new GameStartedMessage());
+        
         base.OnRoomServerPlayersReady();
+    }
+
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+        NetworkClient.RegisterHandler<GameStartedMessage>(OnGameStartedMessage);
+    }
+
+    private void OnGameStartedMessage(GameStartedMessage msg)
+    {
+        // Only invoke on clients, not on host
+        if (!NetworkServer.active)
+        {
+            GameStarted?.Invoke();
+        }
     }
 
     public override GameObject OnRoomServerCreateGamePlayer(NetworkConnectionToClient conn, GameObject roomPlayer)
@@ -92,11 +112,9 @@ public class RoomManager : NetworkRoomManager
         
         if (gamePlayer != null)
         {
-            // Notify GameManager that a game player has been created
             PlayerState playerState = gamePlayer.GetComponent<PlayerState>();
             if (playerState != null)
             {
-                // The GameManager will register this player through PlayerState.OnStartServer()
                 Debug.Log($"Game player created for connection: {conn.connectionId}");
             }
         }
@@ -160,7 +178,6 @@ public class RoomManager : NetworkRoomManager
     }
 
     #endregion
-    
 
     #region Private Methods
 
@@ -180,11 +197,12 @@ public class RoomManager : NetworkRoomManager
         base.OnRoomServerPlayersNotReady();
     }
 
-    public override bool OnRoomServerSceneLoadedForPlayer(NetworkConnectionToClient conn, GameObject roomPlayer, GameObject gamePlayer) {
+    public override bool OnRoomServerSceneLoadedForPlayer(NetworkConnectionToClient conn, GameObject roomPlayer, GameObject gamePlayer) 
+    {
         bool result = base.OnRoomServerSceneLoadedForPlayer(conn, roomPlayer, gamePlayer);
     
-        if (result && NetworkGameEvents.Instance != null) {
-            // Уведомляем клиента о загрузке сцены
+        if (result && NetworkGameEvents.Instance != null) 
+        {
             conn.Send(new SceneLoadedMessage());
         }
     
@@ -194,6 +212,10 @@ public class RoomManager : NetworkRoomManager
     #endregion
 }
 
+public struct SceneLoadedMessage : NetworkMessage 
+{
+}
 
-public struct SceneLoadedMessage : NetworkMessage {
+public struct GameStartedMessage : NetworkMessage
+{
 }
