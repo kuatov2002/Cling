@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
@@ -13,11 +14,13 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Image gunCooldown;
     [SerializeField] private CardManager[] slotsUI;
 
-
     private bool _cursorLocked;
     [SerializeField] private KeyCode lockKeyCode = KeyCode.LeftAlt;
 
     private UIState _uiState = UIState.Menu;
+
+    [SerializeField] private GameObject menuUI;
+    [SerializeField] private GameObject hud;
     
     private void Awake()
     {
@@ -35,18 +38,24 @@ public class UIManager : MonoBehaviour
         RoomManager.HostStopped += OnNetworkStopped;
         RoomManager.ClientStopped += OnNetworkStopped;
         RoomManager.GameStarted += OnGameStarted;
+        
+        UpdateUIState();
     }
 
     private void Update()
     {
-        // Можно оставить блокировку по клавише, если нужно
         if (Input.GetKeyDown(lockKeyCode) && _uiState == UIState.HUD)
         {
             LockCursor(!_cursorLocked);
         }
     }
 
-    
+    private void UpdateUIState()
+    {
+        if (menuUI != null) menuUI.SetActive(_uiState == UIState.Menu);
+        if (hud != null) hud.SetActive(_uiState == UIState.HUD);
+    }
+
     public void OnRoleChanged(RoleType newRole)
     {
         foreach (var roleMapping in playerRoleMappings)
@@ -64,7 +73,6 @@ public class UIManager : MonoBehaviour
 
     private void OnNetworkStopped()
     {
-        // Деактивируем панель при остановке хоста или клиента
         if (gameOverPanel && gameOverPanel.activeSelf)
         {
             gameOverPanel.SetActive(false);
@@ -73,15 +81,17 @@ public class UIManager : MonoBehaviour
 
         OnRoleChanged(RoleType.None);
         _uiState = UIState.Menu;
+        UpdateUIState();
         LockCursor(false);
     }
 
     private void OnGameStarted()
     {
         _uiState = UIState.HUD;
+        UpdateUIState();
     }
 
-    public void LockCursor(bool locked)
+    private void LockCursor(bool locked)
     {
         if (locked)
         {
@@ -108,7 +118,6 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    
     public void UpdateInventoryUI(BaseItem[] slots)
     {
         if (slots == null || slotsUI == null) return;
@@ -121,7 +130,7 @@ public class UIManager : MonoBehaviour
             }
             else
             {
-                slotsUI[i].UnSetItem(); // Очищаем слот UI
+                slotsUI[i].UnSetItem();
             }
         }
     }
