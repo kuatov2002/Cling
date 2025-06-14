@@ -16,6 +16,9 @@ public class PlayerState : NetworkBehaviour
     [SyncVar]
     private int _stateInt = 0;
 
+    [SyncVar]
+    private string _playerNickname = "";
+
     public State CurrentState
     {
         get => (State)_stateInt;
@@ -34,12 +37,19 @@ public class PlayerState : NetworkBehaviour
         }
     }
 
-    public bool IsAlive => CurrentState == State.Alive; // Новое свойство
+    public bool IsAlive => CurrentState == State.Alive;
+    public string PlayerNickname => _playerNickname;
 
     public override void OnStartLocalPlayer()
     {
         OnStateChanged += HandleStateChanged;
         OnStateChanged?.Invoke(CurrentState);
+        
+        // Set nickname from SaveData
+        if (!string.IsNullOrEmpty(SaveData.Nickname))
+        {
+            CmdSetNickname(SaveData.Nickname);
+        }
         
         CmdConfirmSceneLoaded();
     }
@@ -47,6 +57,19 @@ public class PlayerState : NetworkBehaviour
     private void HandleStateChanged(State newState)
     {
         Debug.Log($"Player state changed to: {newState}");
+    }
+
+    [Command]
+    private void CmdSetNickname(string nickname)
+    {
+        _playerNickname = nickname;
+        
+        // Update visual on all clients
+        PlayerVisual visual = GetComponent<PlayerVisual>();
+        if (visual != null)
+        {
+            visual.SetPlayerNickname(nickname);
+        }
     }
 
     [ClientRpc]
@@ -82,13 +105,13 @@ public class PlayerState : NetworkBehaviour
     [Command]
     private void CmdConfirmSceneLoaded()
     {
-        // Выполняется на сервере
         Debug.Log("Client confirmed scene loaded");
         GameManager.Instance?.OnClientSceneLoaded();
     }
 
     [ClientRpc]
-    private void RpcSceneLoaded() {
+    private void RpcSceneLoaded() 
+    {
         GameManager.Instance?.OnClientSceneLoaded();
     }
 }

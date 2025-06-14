@@ -190,7 +190,7 @@ public class GameManager : MonoBehaviour
             PlayerVisual visual = player.GetComponent<PlayerVisual>();
             if (visual != null)
             {
-                visual.SetPlayerIndex(GetPlayerStableIndex(player));
+                visual.SetPlayerNickname(player.PlayerNickname);
             }
         }
     }

@@ -4,56 +4,47 @@ using UnityEngine;
 
 public class PlayerVisual : NetworkBehaviour
 {
-    [SerializeField] private TextMeshPro text;
+    [SerializeField] private TextMeshPro nickname;
     
-    // SyncVar with a hook to update the visual whenever the value changes
-    [SyncVar(hook = nameof(OnPlayerIndexChanged))]
-    private int playerIndex = -1;
+    [SyncVar(hook = nameof(OnNicknameChanged))]
+    private string playerNickname = "";
 
-    // Called on the server when this player is initialized
     public override void OnStartServer()
     {
-        // Get a reference to this player's PlayerState
         PlayerState playerState = GetComponent<PlayerState>();
-        if (playerState != null && GameManager.Instance != null)
+        if (playerState != null)
         {
-            // Set the player index from the server
-            playerIndex = GameManager.Instance.GetPlayerStableIndex(playerState);
+            playerNickname = playerState.PlayerNickname;
         }
     }
 
-    // Server method to update the player index
     [Server]
-    public void SetPlayerIndex(int newIndex)
+    public void SetPlayerNickname(string newNickname)
     {
-        playerIndex = newIndex;
+        playerNickname = newNickname;
     }
 
-    // This runs on all clients when the synced playerIndex changes
-    void OnPlayerIndexChanged(int oldIndex, int newIndex)
+    void OnNicknameChanged(string oldNickname, string newNickname)
     {
-        // Update the visual text with the new index
-        if (newIndex != -1)
+        if (!string.IsNullOrEmpty(newNickname))
         {
-            text.text = $"{newIndex + 1}";
+            nickname.text = newNickname;
         }
         else
         {
-            text.text = "Waiting...";
+            nickname.text = "Waiting...";
         }
     }
 
-    // This ensures the text is updated when the object is enabled
     public override void OnStartClient()
     {
-        // Make sure the text displays the current index
-        if (playerIndex != -1)
+        if (!string.IsNullOrEmpty(playerNickname))
         {
-            text.text = $"{playerIndex + 1}";
+            nickname.text = playerNickname;
         }
         else
         {
-            text.text = "Waiting...";
+            nickname.text = "Waiting...";
         }
     }
 }
