@@ -16,6 +16,8 @@ public class RoomManager : NetworkRoomManager
     private readonly Dictionary<NetworkConnection, NetworkRoomPlayer> _roomPlayers = new();
     private int _currentPlayerCount = 0;
 
+    [SerializeField] private List<CharacterData> characters = new List<CharacterData>();
+    
     public override void Awake()
     {
         base.Awake();
@@ -108,8 +110,23 @@ public class RoomManager : NetworkRoomManager
 
     public override GameObject OnRoomServerCreateGamePlayer(NetworkConnectionToClient conn, GameObject roomPlayer)
     {
-        GameObject gamePlayer = base.OnRoomServerCreateGamePlayer(conn, roomPlayer);
-        
+        if (characters.Count == 0)
+        {
+            Debug.LogError("No player prefabs assigned in RoomManager.");
+            return null;
+        }
+
+        // Select a random prefab
+        int randomIndex = Random.Range(0, characters.Count);
+        GameObject selectedPrefab = characters[randomIndex].characterPrefab;
+
+        // Instantiate at start position or default
+        Transform startPos = GetStartPosition();
+        GameObject gamePlayer = startPos 
+            ? Instantiate(selectedPrefab, startPos.position, startPos.rotation) 
+            : Instantiate(selectedPrefab, Vector3.zero, Quaternion.identity);
+
+        // Optional: Debug logging
         if (gamePlayer != null)
         {
             PlayerState playerState = gamePlayer.GetComponent<PlayerState>();
@@ -118,7 +135,7 @@ public class RoomManager : NetworkRoomManager
                 Debug.Log($"Game player created for connection: {conn.connectionId}");
             }
         }
-        
+
         return gamePlayer;
     }
 
@@ -209,6 +226,7 @@ public class RoomManager : NetworkRoomManager
         return result;
     }
 
+    
     #endregion
 }
 

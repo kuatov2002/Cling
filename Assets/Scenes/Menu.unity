@@ -748,6 +748,8 @@ MonoBehaviour:
   autoCreatePlayer: 1
   playerSpawnMethod: 1
   spawnPrefabs:
+  - {fileID: 5538461023050153465, guid: edb1d75a5e96e0241962b64e6c08dfa2, type: 3}
+  - {fileID: 5538461023050153465, guid: b87bff078c980da4eaeb9ba253a45d01, type: 3}
   - {fileID: 2499570186365837352, guid: 670d5fe05e6d55446b4aa5b444519cba, type: 3}
   - {fileID: 6823424542941286313, guid: 6571762b868d5a641ab81913cb25adf1, type: 3}
   - {fileID: 5538461023050153465, guid: b32664483d33e944891e6a2c9c41406a, type: 3}
@@ -775,6 +777,9 @@ MonoBehaviour:
   _allPlayersReady: 0
   clientIndex: 0
   maxPlayers: 7
+  characters:
+  - {fileID: 11400000, guid: 8926d7c10b051ef43898fd2d15fa8214, type: 2}
+  - {fileID: 11400000, guid: 3d64a93a6348d364aa30838e80221167, type: 2}
 --- !u!114 &389404822
 MonoBehaviour:
   m_ObjectHideFlags: 0
