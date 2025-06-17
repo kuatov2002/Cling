@@ -27,7 +27,7 @@ public class Bullet : NetworkBehaviour
         _damage = dmg;
     }
 
-    private void Update()
+    protected virtual void Update()
     {
         float moveDistance = speed * Time.deltaTime;
         Vector3 start = transform.position;
@@ -39,13 +39,19 @@ public class Bullet : NetworkBehaviour
             if (Physics.Raycast(start, _direction, out RaycastHit hit, moveDistance))
             {
                 var target = hit.collider.GetComponent<IDamageable>();
-                target?.TakeDamage(_damage);
-                DestroySelf();
+                ApplyDamage(target);
                 return;
             }
         }
 
         // Все клиенты двигают пулю визуально
         transform.position = end;
+    }
+
+    [Server]
+    protected virtual void ApplyDamage(IDamageable target)
+    {
+        target?.TakeDamage(_damage);
+        DestroySelf();
     }
 }
