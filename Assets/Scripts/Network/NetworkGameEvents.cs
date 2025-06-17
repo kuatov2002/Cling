@@ -14,7 +14,6 @@ public class NetworkGameEvents : NetworkBehaviour
         }
 
         Instance = this;
-        DontDestroyOnLoad(gameObject);
     }
 
     [Server]
