@@ -97,8 +97,15 @@ public class RoomManager : NetworkRoomManager
     {
         base.OnStartClient();
         NetworkClient.RegisterHandler<GameStartedMessage>(OnGameStartedMessage);
+        NetworkClient.RegisterHandler<SceneLoadedMessage>(OnSceneLoadedMessage);
     }
-
+    private void OnSceneLoadedMessage(SceneLoadedMessage msg) 
+    {
+        if (NetworkServer.active && NetworkGameEvents.Instance != null)
+        {
+            NetworkGameEvents.Instance.RpcSceneLoaded();
+        }
+    }
     private void OnGameStartedMessage(GameStartedMessage msg)
     {
         // Only invoke on clients, not on host
@@ -174,6 +181,8 @@ public class RoomManager : NetworkRoomManager
     public override void OnStopHost()
     {
         CleanupNetworkState();
+        NetworkClient.UnregisterHandler<GameStartedMessage>();
+        NetworkClient.UnregisterHandler<SceneLoadedMessage>();
         HostStopped?.Invoke();
         base.OnStopHost();
         Debug.Log("Host stopped");
@@ -182,6 +191,8 @@ public class RoomManager : NetworkRoomManager
     public override void OnStopClient()
     {
         CleanupNetworkState();
+        NetworkClient.UnregisterHandler<GameStartedMessage>();
+        NetworkClient.UnregisterHandler<SceneLoadedMessage>();
         ClientStopped?.Invoke();
         base.OnStopClient();
         Debug.Log("Client stopped");
@@ -217,12 +228,12 @@ public class RoomManager : NetworkRoomManager
     public override bool OnRoomServerSceneLoadedForPlayer(NetworkConnectionToClient conn, GameObject roomPlayer, GameObject gamePlayer) 
     {
         bool result = base.OnRoomServerSceneLoadedForPlayer(conn, roomPlayer, gamePlayer);
-    
-        if (result && NetworkGameEvents.Instance != null) 
+
+        if (result && NetworkServer.active && NetworkGameEvents.Instance != null) 
         {
             conn.Send(new SceneLoadedMessage());
         }
-    
+
         return result;
     }
 
