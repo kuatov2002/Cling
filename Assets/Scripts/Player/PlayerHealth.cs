@@ -4,11 +4,11 @@ using UnityEngine.UI;
 
 public class PlayerHealth : NetworkBehaviour, IDamageable
 {
-    [SerializeField] private float maxHealth = 100f;
+    [SerializeField] protected float maxHealth = 100f;
     [SerializeField] private Image healthBar;
 
     [SyncVar(hook = nameof(OnHealthChanged))]
-    private float _currentHealth;
+    protected float _currentHealth;
 
     [ServerCallback]
     public override void OnStartServer()
@@ -16,7 +16,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
         _currentHealth = maxHealth;
     }
 
-    public void TakeDamage(float damage)
+    public virtual void TakeDamage(float damage)
     {
         if (!isServer) return;
         _currentHealth = Mathf.Clamp(_currentHealth - damage, 0f, maxHealth);
@@ -29,7 +29,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
             healthBar.fillAmount = newValue / maxHealth;
     }
 
-    private void Die()
+    protected void Die()
     {
         GetComponent<PlayerState>().CurrentState = PlayerState.State.Dead;
         Destroy(gameObject);
