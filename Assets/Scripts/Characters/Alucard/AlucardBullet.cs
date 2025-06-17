@@ -21,16 +21,17 @@ public class AlucardBullet : NetworkBehaviour
     {
         NetworkServer.Destroy(gameObject);
     }
-
-    [Server]
-    public void Initialize(Vector3 dir, float dmg, uint ownerNetId, float heal)
+    
+    
+    [ClientRpc]
+    public void RpcInitialize(Vector3 dir, float dmg, uint ownerNetId, float heal)
     {
         _direction = dir.normalized;
         _damage = dmg;
         _ownerNetId = ownerNetId;
         _healAmount = heal;
     }
-
+    
     private void Update()
     {
         float moveDistance = speed * Time.deltaTime;

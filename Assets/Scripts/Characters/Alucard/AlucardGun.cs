@@ -20,7 +20,7 @@ public class AlucardGun : Gun
         AlucardBullet bulletComponent = bullet.GetComponent<AlucardBullet>();
         if (bulletComponent)
         {
-            bulletComponent.Initialize(shootDirection, damage, netId, healAmount);
+            bulletComponent.RpcInitialize(shootDirection, damage, netId, healAmount);
         }
     }
 }
