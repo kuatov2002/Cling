@@ -357,5 +357,5 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  speed: 100
+  speed: 250
   lifeTime: 3
