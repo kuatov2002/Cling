@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 8500277768211855719}
   - component: {fileID: 8220191438663633890}
   - component: {fileID: 5915071699403072699}
-  m_Layer: 5
+  m_Layer: 3
   m_Name: Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -114,7 +114,7 @@ GameObject:
   - component: {fileID: 59343257899930850}
   - component: {fileID: 5210446439210757855}
   - component: {fileID: 4376529209586174673}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: LeftEye
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -219,7 +219,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 237925682984545735}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: FollowTarget
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -252,7 +252,7 @@ GameObject:
   - component: {fileID: 6645485187001646692}
   - component: {fileID: 1939285902843710927}
   - component: {fileID: 7802819277807473785}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Nickname
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -429,7 +429,7 @@ GameObject:
   - component: {fileID: 3999082922557587182}
   - component: {fileID: 1392297413155732879}
   - component: {fileID: 6016822210177514896}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Star
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -531,7 +531,7 @@ GameObject:
   - component: {fileID: 1522048668401108090}
   - component: {fileID: 891801973075880447}
   - component: {fileID: 677506790417264084}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: RightEye
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -649,7 +649,7 @@ GameObject:
   - component: {fileID: 6509763129446741143}
   - component: {fileID: 6221513755316972515}
   - component: {fileID: 5075816131342946485}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: PlayerModel
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -968,7 +968,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1772771319917485723}
   - component: {fileID: 305135905409888150}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: GameObject
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1018,7 +1018,7 @@ GameObject:
   - component: {fileID: 5548219211156043638}
   - component: {fileID: 6010834231772660213}
   - component: {fileID: 2415205342988879031}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Pistol
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1104,7 +1104,7 @@ GameObject:
   - component: {fileID: 1548202995813690180}
   - component: {fileID: 3154664107526392454}
   - component: {fileID: 6760398375058191348}
-  m_Layer: 5
+  m_Layer: 3
   m_Name: Image
   m_TagString: Untagged
   m_Icon: {fileID: 0}
