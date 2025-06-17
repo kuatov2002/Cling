@@ -3,12 +3,13 @@ using UnityEngine;
 
 public class Gun : NetworkBehaviour
 {
-    [SerializeField] private GameObject bulletPrefab;
-    [SerializeField] private float damage = 20f;
+    [SerializeField] protected GameObject bulletPrefab;
+    [SerializeField] protected float damage = 20f;
     [SerializeField] private float cooldown = 0.5f;
+    [SerializeField] protected Transform gunTransform;
     
-    [SyncVar(hook = nameof(OnLastFireTimeChanged))] 
-    private float _lastFireTime = -Mathf.Infinity;
+    [SyncVar(hook = nameof(OnLastFireTimeChanged))]
+    protected float _lastFireTime = -Mathf.Infinity;
     
     private bool isCharged = false;
     private Camera playerCamera;
@@ -74,18 +75,18 @@ public class Gun : NetworkBehaviour
             targetPoint = ray.origin + ray.direction * 300f;
         }
         
-        Vector3 direction = (targetPoint - transform.position).normalized;
+        Vector3 direction = (targetPoint - gunTransform.position).normalized;
         return direction;
     }
 
     [Command]
-    private void CmdFire(Vector3 shootDirection)
+    protected virtual void CmdFire(Vector3 shootDirection)
     {
         _lastFireTime = (float)NetworkTime.time; // Используем NetworkTime
         
         GameObject bullet = Instantiate(
             bulletPrefab, 
-            transform.position, 
+            gunTransform.position, 
             Quaternion.LookRotation(shootDirection)
         );
         NetworkServer.Spawn(bullet);

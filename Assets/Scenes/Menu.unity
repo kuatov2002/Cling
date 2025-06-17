@@ -778,8 +778,9 @@ MonoBehaviour:
   clientIndex: 0
   maxPlayers: 7
   characters:
-  - {fileID: 11400000, guid: 8926d7c10b051ef43898fd2d15fa8214, type: 2}
+  - {fileID: 11400000, guid: 313dba5f918c13647853f82d3339fc32, type: 2}
   - {fileID: 11400000, guid: 3d64a93a6348d364aa30838e80221167, type: 2}
+  - {fileID: 11400000, guid: 8926d7c10b051ef43898fd2d15fa8214, type: 2}
 --- !u!114 &389404822
 MonoBehaviour:
   m_ObjectHideFlags: 0
