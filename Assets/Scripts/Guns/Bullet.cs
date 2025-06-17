@@ -3,11 +3,11 @@ using UnityEngine;
 
 public class Bullet : NetworkBehaviour
 {
-    [SerializeField] private float speed = 20f;
+    [SerializeField] protected float speed = 20f;
     [SerializeField] private float lifeTime = 3f;
 
-    private float _damage;
-    private Vector3 _direction;
+    protected float _damage;
+    protected Vector3 _direction;
 
     public override void OnStartServer()
     {
@@ -15,7 +15,7 @@ public class Bullet : NetworkBehaviour
     }
 
     [Server]
-    private void DestroySelf()
+    protected void DestroySelf()
     {
         NetworkServer.Destroy(gameObject);
     }

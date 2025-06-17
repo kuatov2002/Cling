@@ -1,26 +1,10 @@
 using Mirror;
 using UnityEngine;
 
-public class AlucardBullet : NetworkBehaviour
+public class AlucardBullet : Bullet
 {
-    [SerializeField] private float speed = 20f;
-    [SerializeField] private float lifeTime = 3f;
-
-    private float _damage;
-    private Vector3 _direction;
     private uint _ownerNetId;
     private float _healAmount;
-
-    public override void OnStartServer()
-    {
-        Invoke(nameof(DestroySelf), lifeTime);
-    }
-
-    [Server]
-    private void DestroySelf()
-    {
-        NetworkServer.Destroy(gameObject);
-    }
     
     
     [ClientRpc]
