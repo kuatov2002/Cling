@@ -770,11 +770,9 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  maxHealth: 80
+  maxHealth: 100
   healthBar: {fileID: 6760398375058191348}
-  hideDuration: 4
-  playerRenderers:
-  - {fileID: 123537840454150497}
+  invisibilityDuration: 2
 --- !u!114 &7838624479138037432
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -959,7 +957,7 @@ MonoBehaviour:
   syncInterval: 0
   bulletPrefab: {fileID: 2499570186365837352, guid: 670d5fe05e6d55446b4aa5b444519cba, type: 3}
   damage: 20
-  cooldown: 1
+  cooldown: 2
   gunTransform: {fileID: 5548219211156043638}
 --- !u!1 &6129816887108654913
 GameObject:

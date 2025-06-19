@@ -846,7 +846,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  moveSpeed: 5
+  moveSpeed: 7
   jumpHeight: 2
   gravity: -9.81
   groundLayer:

@@ -871,7 +871,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  maxHealth: 60
+  maxHealth: 80
   healthBar: {fileID: 6760398375058191348}
 --- !u!114 &5512825531000818770
 MonoBehaviour:
@@ -956,7 +956,7 @@ MonoBehaviour:
   syncInterval: 0
   bulletPrefab: {fileID: 2499570186365837352, guid: 670d5fe05e6d55446b4aa5b444519cba, type: 3}
   damage: 20
-  cooldown: 1
+  cooldown: 1.5
   gunTransform: {fileID: 5548219211156043638}
 --- !u!1 &6129816887108654913
 GameObject:
