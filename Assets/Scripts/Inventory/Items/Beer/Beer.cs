@@ -4,19 +4,12 @@ public class Beer : BaseItem
 {
     [SerializeField] private float healAmount = 50f;
     
-    public override void Use()
+    public override void Use(PlayerInventory playerInventory = null)
     {
-        if (!isServer) 
-        {
-            CmdUseItem();
-            return;
-        }
+        if (playerInventory == null) return;
         
-        // Get the player through connection authority
-        GameObject player = connectionToClient.identity.gameObject;
-        PlayerHealth playerHealth = player.GetComponent<PlayerHealth>();
-        
-        if (playerHealth)
+        PlayerHealth playerHealth = playerInventory.GetComponent<PlayerHealth>();
+        if (playerHealth != null)
         {
             playerHealth.TakeDamage(-healAmount); // Negative damage = healing
             Debug.Log($"Used {data.itemName} - Healed for {healAmount}");

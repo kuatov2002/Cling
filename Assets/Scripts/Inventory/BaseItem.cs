@@ -15,7 +15,10 @@ public abstract class BaseItem : NetworkBehaviour
         }
     }
     
-    public virtual void Use(){}
+    public virtual void Use(PlayerInventory playerInventory = null)
+    {
+        // Default implementation - override in derived classes
+    }
     
     public virtual bool CanUse()
     {
@@ -30,21 +33,5 @@ public abstract class BaseItem : NetworkBehaviour
     public virtual void TakeItem(PlayerInventory inventory)
     {
         //прописать логику добавления в инвентарь
-    }
-    
-    [Command]
-    protected virtual void CmdUseItem()
-    {
-        if (CanUse())
-        {
-            Use();
-            RpcOnItemUsed();
-        }
-    }
-    
-    [ClientRpc]
-    protected virtual void RpcOnItemUsed()
-    {
-        // Override in derived classes for client-side effects
     }
 }

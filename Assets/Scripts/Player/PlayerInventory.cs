@@ -153,7 +153,6 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
-    // ИСПРАВЛЕННЫЕ методы сетевой синхронизации
     [TargetRpc]
     private void TargetSyncInventory(NetworkConnection target, BaseItem[] items)
     {
@@ -178,7 +177,6 @@ public class PlayerInventory : NetworkBehaviour
                 items[i] = inventorySlots[i];
             }
 
-            // Отправляем только владельцу объекта
             TargetSyncInventory(connectionToClient, items);
         }
     }
@@ -193,10 +191,10 @@ public class PlayerInventory : NetworkBehaviour
         BaseItem item = inventorySlots[slotIndex];
         if (item.CanUse())
         {
-            item.Use();
+            // Pass this PlayerInventory instance to the item
+            item.Use(this);
             inventorySlots[slotIndex] = null;
             
-            // Отправляем обновленный инвентарь только владельцу
             TargetSyncInventory(connectionToClient, inventorySlots);
         }
     }
