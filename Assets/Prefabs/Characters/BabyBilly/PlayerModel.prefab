@@ -890,6 +890,10 @@ MonoBehaviour:
   syncInterval: 0
   inventorySlots:
   - {fileID: 2429352268839800045, guid: 5f94949064905a44085b6de451119d98, type: 3}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   activeItemIndex: 0
   hotkeys: 3100000032000000330000003400000035000000
   useItemKey: 101

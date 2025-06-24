@@ -14,6 +14,7 @@ public class PlayerInventory : NetworkBehaviour
         KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3,
         KeyCode.Alpha4, KeyCode.Alpha5
     };
+
     [SerializeField] private KeyCode useItemKey = KeyCode.E;
 
     public BaseItem CurrentActiveSlot => 
@@ -81,14 +82,13 @@ public class PlayerInventory : NetworkBehaviour
     private void UpdateActiveItem()
     {
         OnActiveItemChanged();
-        // Обновляем UI только для локального игрока
         if (isLocalPlayer)
         {
-            UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+            UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
         }
     }
 
-    public bool AddItem(BaseItem item)
+    private bool AddItem(BaseItem item)
     {
         if (!item) return false;
 
@@ -104,8 +104,9 @@ public class PlayerInventory : NetworkBehaviour
 
                 if (isLocalPlayer)
                 {
-                    UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+                    UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
                 }
+
                 return true;
             }
         }
@@ -116,7 +117,7 @@ public class PlayerInventory : NetworkBehaviour
     public bool RemoveItem(int slotIndex)
     {
         if (slotIndex < 0 || slotIndex >= inventorySlots.Length || 
-            inventorySlots[slotIndex] == null)
+            !inventorySlots[slotIndex])
         {
             return false;
         }
@@ -130,8 +131,9 @@ public class PlayerInventory : NetworkBehaviour
         
         if (isLocalPlayer)
         {
-            UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+            UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
         }
+
         return true;
     }
 
@@ -149,20 +151,13 @@ public class PlayerInventory : NetworkBehaviour
         }
         else if (isLocalPlayer)
         {
-            UIManager.Instance?.UpdateInventoryUI(inventorySlots);
+            UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
         }
     }
 
     [TargetRpc]
-    private void TargetSyncInventory(NetworkConnection target, BaseItem[] items)
+    private void TargetSyncInventory(NetworkConnection target)
     {
-        if (inventorySlots == null) return;
-
-        for (int i = 0; i < Mathf.Min(items.Length, inventorySlots.Length); i++)
-        {
-            inventorySlots[i] = items[i];
-        }
-        
         UpdateActiveItem();
     }
 
@@ -171,13 +166,7 @@ public class PlayerInventory : NetworkBehaviour
     {
         if (AddItem(item))
         {
-            var items = new BaseItem[inventorySlots.Length];
-            for (int i = 0; i < inventorySlots.Length; i++)
-            {
-                items[i] = inventorySlots[i];
-            }
-
-            TargetSyncInventory(connectionToClient, items);
+            TargetSyncInventory(connectionToClient);
         }
     }
     
@@ -191,11 +180,10 @@ public class PlayerInventory : NetworkBehaviour
         BaseItem item = inventorySlots[slotIndex];
         if (item.CanUse())
         {
-            // Pass this PlayerInventory instance to the item
             item.Use(this);
             inventorySlots[slotIndex] = null;
             
-            TargetSyncInventory(connectionToClient, inventorySlots);
+            TargetSyncInventory(connectionToClient);
         }
     }
 }

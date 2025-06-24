@@ -24,7 +24,7 @@ public class UIManager : MonoBehaviour
     
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        if (Instance && Instance != this)
         {
             Destroy(gameObject);
             return;
@@ -38,8 +38,6 @@ public class UIManager : MonoBehaviour
         RoomManager.HostStopped += OnNetworkStopped;
         RoomManager.ClientStopped += OnNetworkStopped;
         RoomManager.GameStarted += OnGameStarted;
-        
-        
     }
 
     private void Start()
@@ -57,8 +55,8 @@ public class UIManager : MonoBehaviour
 
     private void UpdateUIState()
     {
-        if (menuUI != null) menuUI.SetActive(_uiState == UIState.Menu);
-        if (hud != null) hud.SetActive(_uiState == UIState.HUD);
+        if (menuUI) menuUI.SetActive(_uiState == UIState.Menu);
+        if (hud) hud.SetActive(_uiState == UIState.HUD);
     }
 
     public void OnRoleChanged(RoleType newRole)
@@ -113,6 +111,7 @@ public class UIManager : MonoBehaviour
     }
 
     private float _lastFill = -1f;
+
     public void UpdateGunCooldown(float cooldown)
     {
         float newFill = Mathf.Clamp01(cooldown);
@@ -123,13 +122,13 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void UpdateInventoryUI(BaseItem[] slots)
+    public void UpdateInventoryUI(BaseItem[] slots, int activeItemIndex = -1)
     {
         if (slots == null || slotsUI == null) return;
     
         for (int i = 0; i < slots.Length && i < slotsUI.Length; i++)
         {
-            if (slots[i] != null && slots[i].Data != null)
+            if (slots[i] && slots[i].Data)
             {
                 slotsUI[i].SetItem(slots[i].Data);
             }
@@ -137,6 +136,8 @@ public class UIManager : MonoBehaviour
             {
                 slotsUI[i].UnSetItem();
             }
+            
+            slotsUI[i].SetActive(i == activeItemIndex);
         }
     }
 }

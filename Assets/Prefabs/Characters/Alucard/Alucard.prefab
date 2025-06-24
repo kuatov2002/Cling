@@ -888,7 +888,12 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  inventorySlots: []
+  inventorySlots:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   activeItemIndex: 0
   hotkeys: 3100000032000000330000003400000035000000
   useItemKey: 101
