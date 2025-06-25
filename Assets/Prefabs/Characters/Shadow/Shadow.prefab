@@ -966,6 +966,8 @@ MonoBehaviour:
   cooldown: 2
   gunTransform: {fileID: 5548219211156043638}
   maxBulletAmount: 6
+  reloadInterval: 7
+  bulletAmount: 3
 --- !u!114 &2524346970416410119
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -981,9 +983,6 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  aimRadius: 800
-  maxAimDistance: 100
-  aimSmoothness: 10
   targetLayerMask:
     serializedVersion: 2
     m_Bits: 8

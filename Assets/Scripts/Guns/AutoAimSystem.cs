@@ -5,10 +5,8 @@ using Mirror;
 
 public class AutoAimSystem : NetworkBehaviour
 {
-    [Header("Auto-Aim Settings")]
-    [SerializeField] private float aimRadius = 50f;
-    [SerializeField] private float maxAimDistance = 100f;
-    [SerializeField] private float aimSmoothness = 5f;
+    private readonly float _aimRadius = 50f;
+    private readonly float _maxAimDistance = 100f;
     [SerializeField] private LayerMask targetLayerMask = -1;
     [SerializeField] private LayerMask obstacleLayerMask = -1;
     
@@ -38,7 +36,7 @@ public class AutoAimSystem : NetworkBehaviour
             Vector3 screenPos = playerCamera.WorldToScreenPoint(target.position);
             float distanceFromCenter = Vector2.Distance(screenPos, screenCenter);
             
-            if (distanceFromCenter <= aimRadius)
+            if (distanceFromCenter <= _aimRadius)
             {
                 float score = CalculateTargetScore(target, aimDirection, distanceFromCenter);
                 if (score < bestScore)
@@ -54,7 +52,7 @@ public class AutoAimSystem : NetworkBehaviour
     
     private List<Transform> FindTargetsInRange()
     {
-        var colliders = Physics.OverlapSphere(transform.position, maxAimDistance, targetLayerMask);
+        var colliders = Physics.OverlapSphere(transform.position, _maxAimDistance, targetLayerMask);
         return colliders
             .Where(c => c.transform != transform && c.GetComponent<PlayerHealth>())
             .Select(c => c.transform)
@@ -74,7 +72,7 @@ public class AutoAimSystem : NetworkBehaviour
     {
         Vector3 directionToTarget = (target.position - transform.position).normalized;
         float angleWeight = 1f - Vector3.Dot(aimDirection, directionToTarget);
-        float distanceWeight = screenDistance / aimRadius;
+        float distanceWeight = screenDistance / _aimRadius;
         
         return angleWeight * 0.7f + distanceWeight * 0.3f;
     }
@@ -84,6 +82,6 @@ public class AutoAimSystem : NetworkBehaviour
         if (!target) return originalDirection;
         
         Vector3 targetDirection = (target.position - playerCamera.transform.position).normalized;
-        return Vector3.Slerp(originalDirection, targetDirection, aimSmoothness * Time.deltaTime);
+        return targetDirection;
     }
 }
