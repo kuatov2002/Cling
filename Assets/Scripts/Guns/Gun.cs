@@ -8,27 +8,50 @@ public class Gun : NetworkBehaviour
     [SerializeField] protected float damage = 20f;
     [SerializeField] private float cooldown = 0.5f;
     [SerializeField] protected Transform gunTransform;
-    [SerializeField] private int maxBulletAmount = 6; // Maximum bullets for this gun
+    [SerializeField] private int maxBulletAmount = 6;
+    [SerializeField] private float reloadInterval = 2f; // Time between auto reloads
     
     [SyncVar(hook = nameof(OnLastFireTimeChanged))]
     protected float LastFireTime = -Mathf.Infinity;
     
-    // Make BulletAmount a SyncVar so it synchronizes across network
+    [SyncVar(hook = nameof(OnLastReloadTimeChanged))]
+    protected float LastReloadTime = -Mathf.Infinity;
+    
     [FormerlySerializedAs("BulletAmount")]
     [SyncVar(hook = nameof(OnBulletAmountChanged))]
     [SerializeField] protected int bulletAmount = 3;
     
-    private bool isCharged = false;
-    private Camera playerCamera;
-    private float lastReportedProgress = -1f;
+    private bool _isCharged = false;
+    private Camera _playerCamera;
+    private float _lastReportedProgress = -1f;
 
     private void Start()
     {
         if (isLocalPlayer)
         {
             StartCoroutine(CooldownUIRoutine());
-            // Update UI immediately when starting
             UpdateBulletUI();
+        }
+        
+        if (isServer)
+        {
+            LastReloadTime = (float)NetworkTime.time;
+            StartCoroutine(AutoReloadRoutine());
+        }
+    }
+    
+    private System.Collections.IEnumerator AutoReloadRoutine()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(0.1f);
+            
+            if (bulletAmount < maxBulletAmount && 
+                (float)NetworkTime.time - LastReloadTime >= reloadInterval)
+            {
+                bulletAmount++;
+                LastReloadTime = (float)NetworkTime.time;
+            }
         }
     }
     
@@ -39,10 +62,10 @@ public class Gun : NetworkBehaviour
             float timeSinceLast = (float)NetworkTime.time - LastFireTime;
             float cooldownProgress = Mathf.Clamp01(timeSinceLast / cooldown);
 
-            if (Mathf.Abs(cooldownProgress - lastReportedProgress) > 0.01f)
+            if (Mathf.Abs(cooldownProgress - _lastReportedProgress) > 0.01f)
             {
                 UIManager.Instance.UpdateGunCooldown(cooldownProgress);
-                lastReportedProgress = cooldownProgress;
+                _lastReportedProgress = cooldownProgress;
             }
 
             yield return new WaitForSeconds(0.01f);
@@ -51,32 +74,31 @@ public class Gun : NetworkBehaviour
 
     public override void OnStartLocalPlayer()
     {
-        playerCamera = Camera.main;
-        // Ensure UI is updated when local player starts
+        _playerCamera = Camera.main;
         UpdateBulletUI();
     }
     
     public bool Charge()
     {
         if ((float)NetworkTime.time - LastFireTime < cooldown || bulletAmount <= 0) return false;
-        isCharged = true;
+        _isCharged = true;
         return true;
     }
     
     [Client]
     public bool Fire()
     {
-        if (!isCharged || bulletAmount <= 0) return false;
+        if (!_isCharged || bulletAmount <= 0) return false;
         
         Vector3 shootDirection = GetShootDirection();
         CmdFire(shootDirection);
-        isCharged = false;
+        _isCharged = false;
         return true;
     }
 
     private Vector3 GetShootDirection()
     {
-        Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0f));
+        Ray ray = _playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0f));
         
         Vector3 targetPoint;
         if (Physics.Raycast(ray, out RaycastHit hit, 300f))
@@ -95,12 +117,9 @@ public class Gun : NetworkBehaviour
     [Command]
     protected virtual void CmdFire(Vector3 shootDirection)
     {
-        // Check bullet amount on server before firing
         if (bulletAmount <= 0) return;
         
         LastFireTime = (float)NetworkTime.time;
-        
-        // Decrease bullet count on server
         bulletAmount--;
         
         GameObject bullet = Instantiate(
@@ -119,20 +138,22 @@ public class Gun : NetworkBehaviour
 
     private void OnLastFireTimeChanged(float oldVal, float newVal)
     {
-        lastReportedProgress = -1f; // Force UI update
+        _lastReportedProgress = -1f;
     }
     
-    // Hook method called when BulletAmount changes
+    private void OnLastReloadTimeChanged(float oldVal, float newVal)
+    {
+        // Optional: Add reload feedback here
+    }
+    
     private void OnBulletAmountChanged(int oldAmount, int newAmount)
     {
-        // Only update UI for local player
         if (isLocalPlayer)
         {
             UpdateBulletUI();
         }
     }
     
-    // Method to update bullet count in UI
     private void UpdateBulletUI()
     {
         if (UIManager.Instance)
