@@ -875,7 +875,6 @@ MonoBehaviour:
   groundCheck: {fileID: 4843741509908108608}
   groundDistance: 0.4
   gun: {fileID: 5075816131342946485}
-  autoAimSystem: {fileID: 2524346970416410119}
 --- !u!114 &5512825531000818770
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -966,7 +965,7 @@ MonoBehaviour:
   damage: 20
   cooldown: 2
   gunTransform: {fileID: 5548219211156043638}
-  autoAimSystem: {fileID: 2524346970416410119}
+  maxBulletAmount: 6
 --- !u!114 &2524346970416410119
 MonoBehaviour:
   m_ObjectHideFlags: 0

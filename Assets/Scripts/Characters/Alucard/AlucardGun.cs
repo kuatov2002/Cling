@@ -8,7 +8,7 @@ public class AlucardGun : Gun
     [Command]
     protected override void CmdFire(Vector3 shootDirection)
     {
-        _lastFireTime = (float)NetworkTime.time;
+        LastFireTime = (float)NetworkTime.time;
         
         GameObject bullet = Instantiate(
             bulletPrefab, 
