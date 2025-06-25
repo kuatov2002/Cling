@@ -18,12 +18,14 @@ public class PlayerMovement : NetworkBehaviour
     [Header("Камера FreeLook")]
     [SerializeField] private Gun gun;
     
+    private AutoAimSystem autoAimSystem;
     private CharacterController _controller;
     private Vector3 _velocity;
     private bool _isGrounded;
     private CinemachineCamera[] freeLookCam;
     private Vector2 _look;
-
+    private bool _isAiming = false;
+    
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
@@ -33,6 +35,7 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
         
+        autoAimSystem = GetComponent<AutoAimSystem>();
         freeLookCam = FindObjectsOfType<CinemachineCamera>();
         freeLookCam = freeLookCam
             .OrderByDescending(cam => cam.Priority.Value)
@@ -81,12 +84,14 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (Input.GetButtonDown("Fire1"))
         {
+            _isAiming = true;
             if (gun.Charge()) 
                 freeLookCam[0].gameObject.SetActive(false);
         }
 
         if (Input.GetButtonUp("Fire1"))
         {
+            _isAiming = false;
             if (gun.Fire()) 
                 freeLookCam[0].gameObject.SetActive(true);
         }
@@ -97,6 +102,20 @@ public class PlayerMovement : NetworkBehaviour
         _look.x = Input.GetAxis("Mouse X");
         _look.y = -Input.GetAxis("Mouse Y");
 
+        Vector3 originalDirection = followTarget.forward;
+        
+        // Apply auto-aim when aiming
+        if (_isAiming && autoAimSystem)
+        {
+            Transform target = autoAimSystem.GetBestTarget(originalDirection);
+            if (target)
+            {
+                Vector3 adjustedDirection = autoAimSystem.GetAdjustedAimDirection(originalDirection, target);
+                followTarget.rotation = Quaternion.LookRotation(adjustedDirection);
+            }
+        }
+        
+        // Standard mouse look
         followTarget.rotation *= Quaternion.AngleAxis(_look.x, Vector3.up);
         followTarget.rotation *= Quaternion.AngleAxis(_look.y, Vector3.right);
 
@@ -104,11 +123,11 @@ public class PlayerMovement : NetworkBehaviour
         angles.z = 0;
 
         var angle = followTarget.localEulerAngles.x;
-        if (angle > 180 && angle < 280)
+        if (angle is > 180 and < 280)
         {
             angles.x = 300;
         }
-        else if (angle < 180 && angle > 70)
+        else if (angle is < 180 and > 70)
         {
             angles.x = 70;
         }
@@ -137,7 +156,7 @@ public class PlayerMovement : NetworkBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        if (groundCheck != null)
+        if (groundCheck)
         {
             Gizmos.color = _isGrounded ? Color.green : Color.red;
             Gizmos.DrawWireSphere(groundCheck.position, groundDistance);
