@@ -85,6 +85,11 @@ public class Gun : NetworkBehaviour
         return true;
     }
     
+    public void CancelCharge()
+    {
+        _isCharged = false;
+    }
+    
     [Client]
     public bool Fire()
     {

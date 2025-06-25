@@ -18,11 +18,11 @@ public class PlayerMovement : NetworkBehaviour
     [Header("Камера FreeLook")]
     [SerializeField] private Gun gun;
     
-    private AutoAimSystem autoAimSystem;
+    private AutoAimSystem _autoAimSystem;
     private CharacterController _controller;
     private Vector3 _velocity;
     private bool _isGrounded;
-    private CinemachineCamera[] freeLookCam;
+    private CinemachineCamera[] _freeLookCam;
     private Vector2 _look;
     private bool _isAiming = false;
     
@@ -35,13 +35,13 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
         
-        autoAimSystem = GetComponent<AutoAimSystem>();
-        freeLookCam = FindObjectsOfType<CinemachineCamera>();
-        freeLookCam = freeLookCam
+        _autoAimSystem = GetComponent<AutoAimSystem>();
+        _freeLookCam = FindObjectsOfType<CinemachineCamera>();
+        _freeLookCam = _freeLookCam
             .OrderByDescending(cam => cam.Priority.Value)
             .ToArray();
 
-        foreach (var cam in freeLookCam)
+        foreach (var cam in _freeLookCam)
         {
             if (cam)
             {
@@ -87,7 +87,7 @@ public class PlayerMovement : NetworkBehaviour
             if (gun.Charge())
             {
                 _isAiming = true;
-                freeLookCam[0].gameObject.SetActive(false);
+                _freeLookCam[0].gameObject.SetActive(false);
             }
         }
 
@@ -96,8 +96,16 @@ public class PlayerMovement : NetworkBehaviour
             if (gun.Fire())
             {
                 _isAiming = false;
-                freeLookCam[0].gameObject.SetActive(true);
+                _freeLookCam[0].gameObject.SetActive(true);
             }
+        }
+
+        // Cancel charge on right mouse button
+        if (Input.GetButtonDown("Fire2") && _isAiming)
+        {
+            gun.CancelCharge();
+            _isAiming = false;
+            _freeLookCam[0].gameObject.SetActive(true);
         }
     }
 
@@ -109,12 +117,12 @@ public class PlayerMovement : NetworkBehaviour
         Vector3 originalDirection = followTarget.forward;
         
         // Apply auto-aim when aiming
-        if (_isAiming && autoAimSystem)
+        if (_isAiming && _autoAimSystem)
         {
-            Transform target = autoAimSystem.GetBestTarget(originalDirection);
+            Transform target = _autoAimSystem.GetBestTarget(originalDirection);
             if (target)
             {
-                Vector3 adjustedDirection = autoAimSystem.GetAdjustedAimDirection(originalDirection, target);
+                Vector3 adjustedDirection = _autoAimSystem.GetAdjustedAimDirection(originalDirection, target);
                 followTarget.rotation = Quaternion.LookRotation(adjustedDirection);
             }
         }
