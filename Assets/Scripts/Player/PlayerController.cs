@@ -84,16 +84,20 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (Input.GetButtonDown("Fire1"))
         {
-            _isAiming = true;
-            if (gun.Charge()) 
+            if (gun.Charge())
+            {
+                _isAiming = true;
                 freeLookCam[0].gameObject.SetActive(false);
+            }
         }
 
         if (Input.GetButtonUp("Fire1"))
         {
-            _isAiming = false;
-            if (gun.Fire()) 
+            if (gun.Fire())
+            {
+                _isAiming = false;
                 freeLookCam[0].gameObject.SetActive(true);
+            }
         }
     }
 
