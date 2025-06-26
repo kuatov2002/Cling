@@ -649,6 +649,7 @@ GameObject:
   - component: {fileID: 6509763129446741143}
   - component: {fileID: 6221513755316972515}
   - component: {fileID: 5075816131342946485}
+  - component: {fileID: 1395359251054008825}
   m_Layer: 3
   m_Name: PlayerModel
   m_TagString: Player
@@ -963,6 +964,30 @@ MonoBehaviour:
   damage: 20
   cooldown: 1.5
   gunTransform: {fileID: 5548219211156043638}
+  maxBulletAmount: 6
+  reloadInterval: 6
+  bulletAmount: 3
+--- !u!114 &1395359251054008825
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb6d277b2f2bc914c986ec2f480b0cb3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  targetLayerMask:
+    serializedVersion: 2
+    m_Bits: 8
+  obstacleLayerMask:
+    serializedVersion: 2
+    m_Bits: 55
 --- !u!1 &6129816887108654913
 GameObject:
   m_ObjectHideFlags: 0

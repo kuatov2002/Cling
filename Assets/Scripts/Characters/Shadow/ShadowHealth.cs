@@ -20,7 +20,7 @@ public class ShadowHealth : PlayerHealth
     private void InitializeMaterials()
     {
         meshRenderer = GetComponent<MeshRenderer>();
-        if (meshRenderer != null)
+        if (meshRenderer)
         {
             originalMaterial = meshRenderer.material;
             invisibleMaterial = new Material(originalMaterial);
@@ -51,7 +51,7 @@ public class ShadowHealth : PlayerHealth
     [ClientRpc]
     private void RpcHideShadow()
     {
-        if (!isLocalPlayer)
+        if (!isLocalPlayer && !isServerOnly)
         {
             gameObject.SetActive(false);
         }
@@ -64,7 +64,7 @@ public class ShadowHealth : PlayerHealth
     [ClientRpc]
     private void RpcShowShadow()
     {
-        if (!isLocalPlayer)
+        if (!isLocalPlayer && !isServerOnly)
         {
             gameObject.SetActive(true);
         }
@@ -76,7 +76,7 @@ public class ShadowHealth : PlayerHealth
 
     private void SetMaterialAlpha(float alpha)
     {
-        if (meshRenderer == null) return;
+        if (!meshRenderer) return;
 
         Material targetMaterial = alpha == 0f ? invisibleMaterial : originalMaterial;
         
@@ -92,7 +92,7 @@ public class ShadowHealth : PlayerHealth
 
     private void OnDestroy()
     {
-        if (invisibleMaterial != null)
+        if (invisibleMaterial)
         {
             Destroy(invisibleMaterial);
         }
