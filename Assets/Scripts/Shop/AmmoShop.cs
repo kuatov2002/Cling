@@ -24,6 +24,8 @@ public class AmmoShop : NetworkBehaviour, IInteractable
         {
             _playerGun = other.GetComponent<Gun>();
         }
+        
+        UIManager.Instance.UpdateInteractText(InteractText);
     }
 
     private void OnTriggerExit(Collider other)
@@ -33,6 +35,9 @@ public class AmmoShop : NetworkBehaviour, IInteractable
         {
             _playerGun = null;
         }
+        
+        if (UIManager.Instance.GetInteractText() == InteractText)
+            UIManager.Instance.UpdateInteractText(string.Empty);
     }
 
     private void Update()

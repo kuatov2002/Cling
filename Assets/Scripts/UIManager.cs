@@ -14,6 +14,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private CardManager[] slotsUI;
     [SerializeField] private TextMeshProUGUI bulletCounts;
     [SerializeField] private TextMeshProUGUI playerMoney;
+    [SerializeField] TextMeshProUGUI interactText;
     
     private bool _cursorLocked;
     [SerializeField] private KeyCode lockKeyCode = KeyCode.LeftAlt;
@@ -154,6 +155,19 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    public void UpdateInteractText(string text)
+    {
+        if (interactText)
+        {
+            interactText.text = text;
+        }
+    }
+
+    public string GetInteractText()
+    {
+        return interactText.text;
+    }
+    
     public void UpdateInventoryUI(BaseItem[] slots, int activeItemIndex = -1)
     {
         if (slots == null || slotsUI == null) return;
