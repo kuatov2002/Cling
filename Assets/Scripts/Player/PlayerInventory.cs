@@ -18,7 +18,7 @@ public class PlayerInventory : NetworkBehaviour
 
     [SerializeField] private KeyCode useItemKey = KeyCode.E;
 
-    protected int money = 0;
+    protected int money = 2;
 
     public BaseItem CurrentActiveSlot => 
         inventorySlots != null && activeItemIndex < inventorySlots.Length 

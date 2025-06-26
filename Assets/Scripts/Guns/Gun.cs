@@ -10,6 +10,7 @@ public class Gun : NetworkBehaviour
     [SerializeField] protected Transform gunTransform;
     [SerializeField] private int maxBulletAmount = 6;
     [SerializeField] private float reloadInterval = 7f;
+    [SerializeField] private int ammoCost = 1;
     
     [SyncVar(hook = nameof(OnLastFireTimeChanged))]
     protected float LastFireTime = -Mathf.Infinity;
@@ -24,9 +25,12 @@ public class Gun : NetworkBehaviour
     private bool _isCharged = false;
     private Camera _playerCamera;
     private float _lastReportedProgress = -1f;
+    private PlayerInventory _playerInventory;
 
     private void Start()
     {
+        _playerInventory = GetComponent<PlayerInventory>();
+        
         if (isLocalPlayer)
         {
             StartCoroutine(CooldownUIRoutine());
@@ -38,6 +42,25 @@ public class Gun : NetworkBehaviour
             LastReloadTime = (float)NetworkTime.time;
             StartCoroutine(AutoReloadRoutine());
         }
+    }
+
+    [Command]
+    public void CmdAddAmmo()
+    {
+        if (bulletAmount >= maxBulletAmount) return;
+        
+        if (_playerInventory && _playerInventory.Money >= ammoCost)
+        {
+            _playerInventory.SpendMoney(ammoCost);
+            bulletAmount++;
+        }
+    }
+
+    public bool CanAddAmmo()
+    {
+        return bulletAmount < maxBulletAmount && 
+               _playerInventory && 
+               _playerInventory.Money >= ammoCost;
     }
     
     private System.Collections.IEnumerator AutoReloadRoutine()
