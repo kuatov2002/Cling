@@ -12,7 +12,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI gameOverText;
     [SerializeField] private Image gunCooldown;
     [SerializeField] private CardManager[] slotsUI;
-    [SerializeField] private TextMeshProUGUI bulletCounts; // This field already exists
+    [SerializeField] private TextMeshProUGUI bulletCounts;
+    [SerializeField] private TextMeshProUGUI playerMoney;
     
     private bool _cursorLocked;
     [SerializeField] private KeyCode lockKeyCode = KeyCode.LeftAlt;
@@ -122,30 +123,34 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // New method to update bullet count display
     public void UpdateBulletCount(int currentBullets, int maxBullets)
     {
         if (bulletCounts)
         {
-            // Display format: "Current / Max" (e.g., "25 / 30")
             bulletCounts.text = $"{currentBullets} / {maxBullets}";
             
-            // Optional: Change color based on bullet count
-            // Red when low (below 25%), yellow when medium (25-50%), white when high
             float percentage = (float)currentBullets / maxBullets;
             
             if (percentage <= 0.25f)
             {
-                bulletCounts.color = Color.red; // Low ammo warning
+                bulletCounts.color = Color.red;
             }
             else if (percentage <= 0.5f)
             {
-                bulletCounts.color = Color.yellow; // Medium ammo
+                bulletCounts.color = Color.yellow;
             }
             else
             {
-                bulletCounts.color = Color.white; // Good ammo
+                bulletCounts.color = Color.white;
             }
+        }
+    }
+
+    public void UpdateMoney(int amount)
+    {
+        if (playerMoney)
+        {
+            playerMoney.text = $"{amount}$";
         }
     }
 

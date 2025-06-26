@@ -10,12 +10,15 @@ public class PlayerInventory : NetworkBehaviour
     [SerializeField] private int activeItemIndex = 0;
 
     [Header("Input")]
-    [SerializeField] private KeyCode[] hotkeys = {
+    [SerializeField] private KeyCode[] hotkeys =
+    {
         KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3,
         KeyCode.Alpha4, KeyCode.Alpha5
     };
 
     [SerializeField] private KeyCode useItemKey = KeyCode.E;
+
+    protected int money = 0;
 
     public BaseItem CurrentActiveSlot => 
         inventorySlots != null && activeItemIndex < inventorySlots.Length 
@@ -24,11 +27,13 @@ public class PlayerInventory : NetworkBehaviour
 
     public BaseItem CurrentActiveItem => CurrentActiveSlot;
     public int ActiveItemIndex => activeItemIndex;
+    public int Money => money;
 
     private void Start()
     {
         if (!isLocalPlayer) return;
         UpdateActiveItem();
+        UpdateMoneyDisplay();
     }
 
     private void Update()
@@ -86,6 +91,38 @@ public class PlayerInventory : NetworkBehaviour
         {
             UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
         }
+    }
+
+    private void UpdateMoneyDisplay()
+    {
+        if (isLocalPlayer)
+        {
+            UIManager.Instance?.UpdateMoney(money);
+        }
+    }
+
+    public void SetMoney(int amount)
+    {
+        money = amount;
+        UpdateMoneyDisplay();
+    }
+
+    public void AddMoney(int amount)
+    {
+        money += amount;
+        UpdateMoneyDisplay();
+    }
+
+    public bool SpendMoney(int amount)
+    {
+        if (money >= amount)
+        {
+            money -= amount;
+            UpdateMoneyDisplay();
+            return true;
+        }
+
+        return false;
     }
 
     private bool AddItem(BaseItem item)
@@ -159,6 +196,7 @@ public class PlayerInventory : NetworkBehaviour
     private void TargetSyncInventory(NetworkConnection target)
     {
         UpdateActiveItem();
+        UpdateMoneyDisplay();
     }
 
     [Command]
