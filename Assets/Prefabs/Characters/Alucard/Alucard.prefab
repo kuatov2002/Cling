@@ -965,7 +965,8 @@ MonoBehaviour:
   cooldown: 2.5
   gunTransform: {fileID: 5548219211156043638}
   maxBulletAmount: 6
-  reloadInterval: 7
+  reloadInterval: 12
+  ammoCost: 1
   bulletAmount: 3
   healAmount: 10
 --- !u!114 &-545436430807402659

@@ -1,3 +1,4 @@
+using System.Collections;
 using Mirror;
 using UnityEngine;
 
@@ -27,13 +28,48 @@ public class PlayerInventory : NetworkBehaviour
 
     public BaseItem CurrentActiveItem => CurrentActiveSlot;
     public int ActiveItemIndex => activeItemIndex;
+    
+    
     public int Money => money;
+
+    [SyncVar(hook = nameof(OnLastMoneyTakeTimeChanged))]
+    protected float LastMoneyTakeTime = -Mathf.Infinity;
+    
+    [SerializeField] private float moneyTakeInterval = 10f;
 
     private void Start()
     {
         if (!isLocalPlayer) return;
         UpdateActiveItem();
         UpdateMoneyDisplay();
+        
+        if (isServer)
+        {
+            LastMoneyTakeTime = (float)NetworkTime.time;
+            StartCoroutine(MoneyTakeRoutine());
+        }
+    }
+
+    private IEnumerator MoneyTakeRoutine()
+    {
+        while (true)
+        {
+            if ((float)NetworkTime.time - LastMoneyTakeTime >= moneyTakeInterval)
+            {
+                money++;
+                LastMoneyTakeTime = (float)NetworkTime.time;
+            }
+
+            yield return new WaitForSeconds(0.17f);
+        }
+    }
+
+    private void OnLastMoneyTakeTimeChanged(float oldAmount, float newAmount)
+    {
+        if (isLocalPlayer)
+        {
+            UpdateMoneyDisplay();
+        }
     }
 
     private void Update()
