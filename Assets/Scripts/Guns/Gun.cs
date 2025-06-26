@@ -9,8 +9,7 @@ public class Gun : NetworkBehaviour
     [SerializeField] private float cooldown = 0.5f;
     [SerializeField] protected Transform gunTransform;
     [SerializeField] private int maxBulletAmount = 6;
-    [SerializeField] private float reloadInterval = 7f;
-    [SerializeField] private int ammoCost = 1;
+    [SerializeField] protected float reloadInterval = 7f;
     
     [SyncVar(hook = nameof(OnLastFireTimeChanged))]
     protected float LastFireTime = -Mathf.Infinity;
@@ -26,6 +25,7 @@ public class Gun : NetworkBehaviour
     private Camera _playerCamera;
     private float _lastReportedProgress = -1f;
     private PlayerInventory _playerInventory;
+    private AmmoShop _currentAmmoShop; // Reference to current ammo shop
 
     private void Start()
     {
@@ -44,10 +44,25 @@ public class Gun : NetworkBehaviour
         }
     }
 
+    // Method to set the current ammo shop (called by AmmoShop)
+    public void SetCurrentAmmoShop(AmmoShop ammoShop)
+    {
+        _currentAmmoShop = ammoShop;
+    }
+
+    // Method to clear the current ammo shop (called by AmmoShop)
+    public void ClearCurrentAmmoShop()
+    {
+        _currentAmmoShop = null;
+    }
+
     [Command]
     public void CmdAddAmmo()
     {
         if (bulletAmount >= maxBulletAmount) return;
+        
+        // Get price from current ammo shop
+        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 1; // Default to 1 if no shop
         
         if (_playerInventory && _playerInventory.Money >= ammoCost)
         {
@@ -58,6 +73,9 @@ public class Gun : NetworkBehaviour
 
     public bool CanAddAmmo()
     {
+        // Get price from current ammo shop
+        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 1; // Default to 1 if no shop
+        
         return bulletAmount < maxBulletAmount && 
                _playerInventory && 
                _playerInventory.Money >= ammoCost;
