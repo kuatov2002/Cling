@@ -1236,8 +1236,8 @@ MonoBehaviour:
   onlineScene: Assets/Scenes/OnlineLow.unity
   offlineSceneLoadDelay: 0
   transport: {fileID: 389404818}
-  networkAddress: localhost
-  maxConnections: 100
+  networkAddress: 192.168.31.221
+  maxConnections: 7
   disconnectInactiveConnections: 0
   disconnectInactiveTimeout: 60
   authenticator: {fileID: 0}
@@ -1278,6 +1278,8 @@ MonoBehaviour:
   characters:
   - {fileID: 11400000, guid: 8926d7c10b051ef43898fd2d15fa8214, type: 2}
   - {fileID: 11400000, guid: 8926d7c10b051ef43898fd2d15fa8214, type: 2}
+  - {fileID: 11400000, guid: 313dba5f918c13647853f82d3339fc32, type: 2}
+  - {fileID: 11400000, guid: 998d8ae618c531042b8b9fee83c69f33, type: 2}
 --- !u!114 &389404822
 MonoBehaviour:
   m_ObjectHideFlags: 0

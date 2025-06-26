@@ -965,7 +965,7 @@ MonoBehaviour:
   cooldown: 1.5
   gunTransform: {fileID: 5548219211156043638}
   maxBulletAmount: 6
-  reloadInterval: 7
+  reloadInterval: 6
   bulletAmount: 3
 --- !u!114 &1395359251054008825
 MonoBehaviour:

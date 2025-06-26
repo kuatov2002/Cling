@@ -9,7 +9,7 @@ public class Gun : NetworkBehaviour
     [SerializeField] private float cooldown = 0.5f;
     [SerializeField] protected Transform gunTransform;
     [SerializeField] private int maxBulletAmount = 6;
-    [SerializeField] private float reloadInterval = 2f; // Time between auto reloads
+    [SerializeField] private float reloadInterval = 7f;
     
     [SyncVar(hook = nameof(OnLastFireTimeChanged))]
     protected float LastFireTime = -Mathf.Infinity;
@@ -44,14 +44,14 @@ public class Gun : NetworkBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(0.1f);
-            
             if (bulletAmount < maxBulletAmount && 
                 (float)NetworkTime.time - LastReloadTime >= reloadInterval)
             {
                 bulletAmount++;
                 LastReloadTime = (float)NetworkTime.time;
             }
+
+            yield return new WaitForSeconds(0.17f);
         }
     }
     
@@ -68,7 +68,7 @@ public class Gun : NetworkBehaviour
                 _lastReportedProgress = cooldownProgress;
             }
 
-            yield return new WaitForSeconds(0.01f);
+            yield return new WaitForSeconds(0.017f);
         }
     }
 

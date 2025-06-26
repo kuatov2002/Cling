@@ -3,8 +3,8 @@ using UnityEngine;
 
 public class Bullet : NetworkBehaviour
 {
-    [SerializeField] protected float speed = 20f;
-    [SerializeField] private float lifeTime = 3f;
+    protected float speed = 900f;
+    protected float lifeTime = 3f;
 
     protected float _damage;
     protected Vector3 _direction;
