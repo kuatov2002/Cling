@@ -19,7 +19,8 @@ public class PlayerInventory : NetworkBehaviour
 
     [SerializeField] private KeyCode useItemKey = KeyCode.E;
 
-    protected int money = 2;
+    [SyncVar(hook = nameof(OnMoneyChanged))]
+    private int money = 2;
 
     public BaseItem CurrentActiveSlot => 
         inventorySlots != null && activeItemIndex < inventorySlots.Length 
@@ -28,12 +29,10 @@ public class PlayerInventory : NetworkBehaviour
 
     public BaseItem CurrentActiveItem => CurrentActiveSlot;
     public int ActiveItemIndex => activeItemIndex;
-    
-    
     public int Money => money;
 
     [SyncVar(hook = nameof(OnLastMoneyTakeTimeChanged))]
-    protected float LastMoneyTakeTime = -Mathf.Infinity;
+    private float LastMoneyTakeTime = -Mathf.Infinity;
     
     [SerializeField] private float moneyTakeInterval = 10f;
 
@@ -42,12 +41,13 @@ public class PlayerInventory : NetworkBehaviour
         if (!isLocalPlayer) return;
         UpdateActiveItem();
         UpdateMoneyDisplay();
-        
-        if (isServer)
-        {
-            LastMoneyTakeTime = (float)NetworkTime.time;
-            StartCoroutine(MoneyTakeRoutine());
-        }
+    }
+
+    public override void OnStartClient()
+    {
+        // Start passive income for all players on server
+        LastMoneyTakeTime = (float)NetworkTime.time;
+        StartCoroutine(MoneyTakeRoutine());
     }
 
     private IEnumerator MoneyTakeRoutine()
@@ -61,6 +61,14 @@ public class PlayerInventory : NetworkBehaviour
             }
 
             yield return new WaitForSeconds(0.17f);
+        }
+    }
+
+    private void OnMoneyChanged(int oldAmount, int newAmount)
+    {
+        if (isLocalPlayer)
+        {
+            UpdateMoneyDisplay();
         }
     }
 
@@ -137,24 +145,24 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
+    [Server]
     public void SetMoney(int amount)
     {
         money = amount;
-        UpdateMoneyDisplay();
     }
 
+    [Server]
     public void AddMoney(int amount)
     {
         money += amount;
-        UpdateMoneyDisplay();
     }
 
+    [Server]
     public bool SpendMoney(int amount)
     {
         if (money >= amount)
         {
             money -= amount;
-            UpdateMoneyDisplay();
             return true;
         }
 

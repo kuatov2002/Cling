@@ -7,7 +7,6 @@ public class AmmoShop : NetworkBehaviour, IInteractable
     
     public string InteractText => $"Press F to buy ammo ({ammoCost}$)";
     
-    // Public property to access ammo cost
     public int AmmoCost => ammoCost;
     
     private Gun _playerGun;
@@ -26,14 +25,14 @@ public class AmmoShop : NetworkBehaviour, IInteractable
         if (networkIdentity && networkIdentity.isLocalPlayer)
         {
             _playerGun = other.GetComponent<Gun>();
-            // Set this shop as current ammo shop for the gun
             if (_playerGun)
             {
                 _playerGun.SetCurrentAmmoShop(this);
             }
+            
+            // Only update UI for local player
+            UIManager.Instance.UpdateInteractText(InteractText);
         }
-        
-        UIManager.Instance.UpdateInteractText(InteractText);
     }
 
     private void OnTriggerExit(Collider other)
@@ -41,17 +40,19 @@ public class AmmoShop : NetworkBehaviour, IInteractable
         var networkIdentity = other.GetComponent<NetworkIdentity>();
         if (networkIdentity && networkIdentity.isLocalPlayer)
         {
-            // Clear the current ammo shop reference from gun
             if (_playerGun)
             {
                 _playerGun.ClearCurrentAmmoShop();
             }
 
             _playerGun = null;
+            
+            // Only clear UI for local player
+            if (UIManager.Instance.GetInteractText() == InteractText)
+            {
+                UIManager.Instance.UpdateInteractText(string.Empty);
+            }
         }
-        
-        if (UIManager.Instance.GetInteractText() == InteractText)
-            UIManager.Instance.UpdateInteractText(string.Empty);
     }
 
     private void Update()
