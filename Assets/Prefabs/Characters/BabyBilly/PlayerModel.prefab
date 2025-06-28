@@ -891,13 +891,14 @@ MonoBehaviour:
   syncInterval: 0
   inventorySlots:
   - {fileID: 2429352268839800045, guid: 5f94949064905a44085b6de451119d98, type: 3}
-  - {fileID: 0}
+  - {fileID: 8001623815023853232, guid: 3e4db753ebe0891448700f23db36eac3, type: 3}
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
   activeItemIndex: 0
   hotkeys: 3100000032000000330000003400000035000000
   useItemKey: 101
+  moneyTakeInterval: 10
 --- !u!114 &2851042032946622653
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -966,7 +967,6 @@ MonoBehaviour:
   gunTransform: {fileID: 5548219211156043638}
   maxBulletAmount: 6
   reloadInterval: 10
-  ammoCost: 1
   bulletAmount: 3
 --- !u!114 &1395359251054008825
 MonoBehaviour:

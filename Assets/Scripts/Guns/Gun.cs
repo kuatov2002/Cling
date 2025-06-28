@@ -56,6 +56,18 @@ public class Gun : NetworkBehaviour
         _currentAmmoShop = null;
     }
 
+    [Server]
+    public void AddAmmo(int amount)
+    {
+        int ammoToAdd = Mathf.Min(amount, maxBulletAmount - bulletAmount);
+        if (ammoToAdd > 0)
+        {
+            bulletAmount += ammoToAdd;
+            Debug.Log($"Added {ammoToAdd} ammo. Current: {bulletAmount}/{maxBulletAmount}");
+        }
+    }
+
+    
     [Command]
     public void CmdAddAmmo()
     {
