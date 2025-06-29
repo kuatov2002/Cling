@@ -5,7 +5,8 @@ using UnityEngine;
 public class PlayerInventory : NetworkBehaviour
 {
     [Header("Inventory Configuration")]
-    [SerializeField] private BaseItem[] inventorySlots;
+    [SerializeField] private BaseItem[] initialInventorySlots = new BaseItem[5];
+    private SyncList<BaseItem> inventorySlots = new();
 
     [Header("Active Item Display")]
     [SerializeField] private int activeItemIndex = 0;
@@ -23,7 +24,7 @@ public class PlayerInventory : NetworkBehaviour
     private int money = 2;
 
     public BaseItem CurrentActiveSlot => 
-        inventorySlots != null && activeItemIndex < inventorySlots.Length 
+        inventorySlots != null && activeItemIndex < inventorySlots.Count 
             ? inventorySlots[activeItemIndex] 
             : null;
 
@@ -39,15 +40,42 @@ public class PlayerInventory : NetworkBehaviour
     private void Start()
     {
         if (!isLocalPlayer) return;
+        
+        // Initialize inventory from inspector values
+        if (inventorySlots.Count == 0)
+        {
+            for (int i = 0; i < initialInventorySlots.Length; i++)
+            {
+                inventorySlots.Add(initialInventorySlots[i]);
+            }
+        }
+        
+        // Subscribe to inventory changes
+        inventorySlots.OnChange += OnInventoryChanged;
+        
         UpdateActiveItem();
         UpdateMoneyDisplay();
     }
 
     public override void OnStartClient()
     {
-        // Start passive income for all players on server
         LastMoneyTakeTime = (float)NetworkTime.time;
         StartCoroutine(MoneyTakeRoutine());
+        
+        // Subscribe to inventory changes for all clients
+        inventorySlots.OnChange += OnInventoryChanged;
+    }
+
+    private void OnInventoryChanged(SyncList<BaseItem>.Operation op, int index, BaseItem newItem)
+    {
+        if (!isLocalPlayer) return;
+        
+        if (index == activeItemIndex)
+        {
+            UpdateActiveItem();
+        }
+        
+        UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
     }
 
     private IEnumerator MoneyTakeRoutine()
@@ -89,7 +117,7 @@ public class PlayerInventory : NetworkBehaviour
 
     private void HandleHotkeyInput()
     {
-        for (int i = 0; i < hotkeys.Length && i < inventorySlots.Length; i++)
+        for (int i = 0; i < hotkeys.Length && i < inventorySlots.Count; i++)
         {
             if (Input.GetKeyDown(hotkeys[i]))
             {
@@ -118,7 +146,7 @@ public class PlayerInventory : NetworkBehaviour
 
     private void SetActiveItem(int index)
     {
-        if (index < 0 || index >= inventorySlots.Length)
+        if (index < 0 || index >= inventorySlots.Count)
         {
             Debug.LogWarning($"Invalid inventory index: {index}");
             return;
@@ -144,18 +172,7 @@ public class PlayerInventory : NetworkBehaviour
             UIManager.Instance?.UpdateMoney(money);
         }
     }
-
-    [Server]
-    public void SetMoney(int amount)
-    {
-        money = amount;
-    }
-
-    [Server]
-    public void AddMoney(int amount)
-    {
-        money += amount;
-    }
+    
 
     [Server]
     public bool SpendMoney(int amount)
@@ -169,53 +186,21 @@ public class PlayerInventory : NetworkBehaviour
         return false;
     }
 
-    private bool AddItem(BaseItem item)
+    [Server]
+    public bool AddItem(BaseItem item)
     {
         if (!item) return false;
 
-        for (int i = 0; i < inventorySlots.Length; i++)
+        for (int i = 0; i < inventorySlots.Count; i++)
         {
             if (!inventorySlots[i])
             {
                 inventorySlots[i] = item;
-                if (i == activeItemIndex)
-                {
-                    UpdateActiveItem();
-                }
-
-                if (isLocalPlayer)
-                {
-                    UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
-                }
-
                 return true;
             }
         }
 
         return false;
-    }
-
-    public bool RemoveItem(int slotIndex)
-    {
-        if (slotIndex < 0 || slotIndex >= inventorySlots.Length || 
-            !inventorySlots[slotIndex])
-        {
-            return false;
-        }
-
-        inventorySlots[slotIndex] = null;
-        
-        if (slotIndex == activeItemIndex)
-        {
-            UpdateActiveItem();
-        }
-        
-        if (isLocalPlayer)
-        {
-            UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
-        }
-
-        return true;
     }
 
     protected virtual void OnActiveItemChanged()
@@ -224,38 +209,10 @@ public class PlayerInventory : NetworkBehaviour
         Debug.Log($"Active item changed to: {itemName} (Index: {activeItemIndex})");
     }
 
-    public void OnInventorySlotChanged(int slotIndex)
-    {
-        if (slotIndex == activeItemIndex)
-        {
-            UpdateActiveItem();
-        }
-        else if (isLocalPlayer)
-        {
-            UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
-        }
-    }
-
-    [TargetRpc]
-    private void TargetSyncInventory(NetworkConnection target)
-    {
-        UpdateActiveItem();
-        UpdateMoneyDisplay();
-    }
-
-    [Command]
-    public void CmdAddItem(BaseItem item)
-    {
-        if (AddItem(item))
-        {
-            TargetSyncInventory(connectionToClient);
-        }
-    }
-    
     [Command]
     private void CmdUseItem(int slotIndex)
     {
-        if (slotIndex < 0 || slotIndex >= inventorySlots.Length || 
+        if (slotIndex < 0 || slotIndex >= inventorySlots.Count || 
             !inventorySlots[slotIndex])
             return;
 
@@ -264,8 +221,6 @@ public class PlayerInventory : NetworkBehaviour
         {
             item.Use(this);
             inventorySlots[slotIndex] = null;
-            
-            TargetSyncInventory(connectionToClient);
         }
     }
 }

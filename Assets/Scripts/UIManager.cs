@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Mirror;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -168,11 +169,11 @@ public class UIManager : MonoBehaviour
         return interactText.text;
     }
     
-    public void UpdateInventoryUI(BaseItem[] slots, int activeItemIndex = -1)
+    public void UpdateInventoryUI(SyncList<BaseItem> slots, int activeItemIndex = -1)
     {
         if (slots == null || slotsUI == null) return;
     
-        for (int i = 0; i < slots.Length && i < slotsUI.Length; i++)
+        for (int i = 0; i < slots.Count && i < slotsUI.Length; i++)
         {
             if (slots[i] && slots[i].Data)
             {
