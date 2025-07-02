@@ -65,5 +65,8 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  data: {fileID: 11400000, guid: 6315a301620e89f4eb709329958b7b6b, type: 2}
+  itemName: Extra Clip
+  itemDescription: qwe
+  itemTooltip: asfag
+  itemIcon: {fileID: 21300000, guid: 13ba34da9011744c884f459ce4699444, type: 3}
   ammoAmount: 3

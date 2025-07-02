@@ -13,7 +13,7 @@ public class ExtraClip : BaseItem
         {
             // Add ammo directly to the gun
             gun.AddAmmo(ammoAmount);
-            Debug.Log($"Used {data.itemName} - Restored {ammoAmount} ammo");
+            Debug.Log($"Used {itemName} - Restored {ammoAmount} ammo");
         }
     }
 }

@@ -1,12 +1,13 @@
 using UnityEngine;
 
 
-    [CreateAssetMenu(fileName = "Inventory Item", menuName = "Inventory Item")]
-    public class InventoryItemData : ScriptableObject
-    {
-        public string itemName;
-        public string itemDescription;
+[CreateAssetMenu(fileName = "Inventory Item", menuName = "Inventory Item")]
+public class InventoryItemData : ScriptableObject
+{
+    public string itemName;
+    public string itemDescription;
 
-        public string itemTooltip;
-        public Sprite itemIcon;
-    }
+    public string itemTooltip;
+    public Sprite itemIcon;
+}
+

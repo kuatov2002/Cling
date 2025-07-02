@@ -1,37 +1,30 @@
+using System;
 using UnityEngine;
 using Mirror;
+using Unity.VisualScripting;
 
+[Serializable]
 public abstract class BaseItem : NetworkBehaviour
 {
-    [SerializeField] protected InventoryItemData data;
+    public string itemName;
+    public string itemDescription;
+
+    public string itemTooltip;
+    public Sprite itemIcon;
     
-    public InventoryItemData Data => data;
-    
-    protected virtual void Start()
-    {
-        if (data == null)
-        {
-            Debug.LogError($"Item data not assigned for {gameObject.name}");
-        }
-    }
-    
+
     public virtual void Use(PlayerInventory playerInventory = null)
     {
-        // Default implementation - override in derived classes
-    }
-    
-    public virtual bool CanUse()
-    {
-        return data != null;
-    }
-    
-    public virtual void Initialize(InventoryItemData itemData)
-    {
-        data = itemData;
+        // Реализация использования предмета
     }
 
+    public virtual bool CanUse()
+    {
+        return true;
+    }
+    
     public virtual void TakeItem(PlayerInventory inventory)
     {
-        //прописать логику добавления в инвентарь
+        // Логика добавления в инвентарь
     }
 }

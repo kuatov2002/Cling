@@ -174,9 +174,9 @@ public class UIManager : MonoBehaviour
     
         for (int i = 0; i < slots.Length && i < slotsUI.Length; i++)
         {
-            if (slots[i] && slots[i].Data)
+            if (slots[i])
             {
-                slotsUI[i].SetItem(slots[i].Data);
+                slotsUI[i].SetItem(slots[i].itemName, slots[i].itemIcon);
             }
             else
             {

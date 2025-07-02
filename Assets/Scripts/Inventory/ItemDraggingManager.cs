@@ -34,11 +34,11 @@ using UnityEngine;
             {
                 if (toCard != default)
                 {
-                    toCard.SetItem(dragCard.itemData);
+                    toCard.SetItem(dragCard.itemData.itemName, dragCard.itemData.itemIcon);
                 }
                 else if (fromCard != default)
                 {
-                    fromCard.SetItem(dragCard.itemData);
+                    fromCard.SetItem(dragCard.itemData.itemName, dragCard.itemData.itemIcon);
                 }
 
                 toCard = default;
@@ -49,7 +49,7 @@ using UnityEngine;
 
             if (Input.GetKeyDown(KeyCode.Mouse0) && fromCard != default)
             {
-                dragCard.SetItem(fromCard.itemData);
+                dragCard.SetItem(fromCard.itemData.itemName, fromCard.itemData.itemIcon);
                 fromCard.UnSetItem();
 
                 dragCard.gameObject.SetActive(true);

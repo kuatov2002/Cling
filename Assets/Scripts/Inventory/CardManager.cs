@@ -27,15 +27,7 @@ public class CardManager : MonoBehaviour, IPointerDownHandler, IPointerEnterHand
 
             gameObject.SetActive(false);
         }
-
-        if (!itemData)
-        {
-            RefreshDisplay();
-        }
-        else
-        {
-            SetItem(itemData);
-        }
+        
         
         outline = GetComponent<Outline>();
         if (outline)
@@ -82,18 +74,17 @@ public class CardManager : MonoBehaviour, IPointerDownHandler, IPointerEnterHand
         TooltipManagerInventory.UnSetToolTip();
     }
 
-    public bool SetItem(InventoryItemData itemData)
+    public bool SetItem(string itemName, Sprite itemIcon)
     {
         if ((isOccupied && !useAsDrag) || !itemData)
         {
             return false;
         }
 
-        this.itemData = itemData;
-        this.itemName.text = itemData.name;
-        this.itemIcon.sprite = itemData.itemIcon;
+        this.itemName.text = itemName;
+        this.itemIcon.sprite = itemIcon;
 
-        this.isOccupied = true;
+        isOccupied = true;
 
         RefreshDisplay();
 

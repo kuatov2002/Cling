@@ -48,7 +48,10 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  data: {fileID: 11400000, guid: 44445d70e33ee7f40a52f366b1438495, type: 2}
+  itemName: Beer
+  itemDescription: qw
+  itemTooltip: qwer
+  itemIcon: {fileID: 21300000, guid: d676a19c7b3d44073a9a585786f11951, type: 3}
   healAmount: 20
 --- !u!114 &-3200794397901359773
 MonoBehaviour:

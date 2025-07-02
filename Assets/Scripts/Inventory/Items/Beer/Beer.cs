@@ -6,13 +6,13 @@ public class Beer : BaseItem
     
     public override void Use(PlayerInventory playerInventory = null)
     {
-        if (playerInventory == null) return;
+        if (!playerInventory) return;
         
         PlayerHealth playerHealth = playerInventory.GetComponent<PlayerHealth>();
-        if (playerHealth != null)
+        if (playerHealth)
         {
             playerHealth.TakeDamage(-healAmount); // Negative damage = healing
-            Debug.Log($"Used {data.itemName} - Healed for {healAmount}");
+            Debug.Log($"Used {itemName} - Healed for {healAmount}");
         }
     }
 }

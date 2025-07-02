@@ -32,32 +32,35 @@ public class PlayerInventory : NetworkBehaviour
     public int Money => money;
 
     [SyncVar(hook = nameof(OnLastMoneyTakeTimeChanged))]
-    private float LastMoneyTakeTime = -Mathf.Infinity;
+    private float _lastMoneyTakeTime = -Mathf.Infinity;
     
     [SerializeField] private float moneyTakeInterval = 10f;
 
-    private void Start()
+    public override void OnStartServer()
     {
-        if (!isLocalPlayer) return;
-        UpdateActiveItem();
-        UpdateMoneyDisplay();
+        // Запуск пассивного дохода только на сервере
+        _lastMoneyTakeTime = (float)NetworkTime.time;
+        StartCoroutine(MoneyTakeRoutine());
     }
 
     public override void OnStartClient()
     {
-        // Start passive income for all players on server
-        LastMoneyTakeTime = (float)NetworkTime.time;
-        StartCoroutine(MoneyTakeRoutine());
+        // Синхронизация при подключении
+        if (isLocalPlayer)
+        {
+            UpdateActiveItem();
+            UpdateMoneyDisplay();
+        }
     }
 
     private IEnumerator MoneyTakeRoutine()
     {
         while (true)
         {
-            if ((float)NetworkTime.time - LastMoneyTakeTime >= moneyTakeInterval)
+            if ((float)NetworkTime.time - _lastMoneyTakeTime >= moneyTakeInterval)
             {
                 money++;
-                LastMoneyTakeTime = (float)NetworkTime.time;
+                _lastMoneyTakeTime = (float)NetworkTime.time;
             }
 
             yield return new WaitForSeconds(0.17f);
@@ -130,10 +133,10 @@ public class PlayerInventory : NetworkBehaviour
 
     private void UpdateActiveItem()
     {
-        OnActiveItemChanged();
         if (isLocalPlayer)
         {
             UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
+            Debug.Log("Инвентарь обновлен");
         }
     }
 
@@ -169,7 +172,7 @@ public class PlayerInventory : NetworkBehaviour
         return false;
     }
 
-    private bool AddItem(BaseItem item)
+    public bool AddItem(BaseItem item)
     {
         if (!item) return false;
 
@@ -216,12 +219,6 @@ public class PlayerInventory : NetworkBehaviour
         }
 
         return true;
-    }
-
-    protected virtual void OnActiveItemChanged()
-    {
-        string itemName = CurrentActiveItem?.Data?.itemName ?? "None";
-        Debug.Log($"Active item changed to: {itemName} (Index: {activeItemIndex})");
     }
 
     public void OnInventorySlotChanged(int slotIndex)
