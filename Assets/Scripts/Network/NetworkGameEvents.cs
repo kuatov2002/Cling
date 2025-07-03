@@ -7,7 +7,7 @@ public class NetworkGameEvents : NetworkBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        if (Instance && Instance != this)
         {
             Destroy(gameObject);
             return;
@@ -36,14 +36,15 @@ public class NetworkGameEvents : NetworkBehaviour
     }
 
     [ClientRpc]
-    public void RpcGameOver(string winningTeam)
+    public void RpcGameOver(string winningTeam, PlayerRoleInfo[] playerRoles)
     {
         Debug.Log($"{winningTeam} have won the game!");
-        UIManager.Instance?.Gameover($"{winningTeam} have won the game!");
+        UIManager.Instance?.GameoverWithRoles($"{winningTeam} have won the game!", playerRoles);
     }
     
     [ClientRpc]
-    public void RpcSceneLoaded() {
+    public void RpcSceneLoaded() 
+    {
         // Вызывается на клиентах после загрузки сцены
         Debug.Log("Scene loaded on client");
         GameManager.Instance?.OnClientSceneLoaded();

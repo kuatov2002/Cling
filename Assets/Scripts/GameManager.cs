@@ -10,7 +10,6 @@ public class GameManager : MonoBehaviour
 
     [Header("Game Configuration")]
     [SerializeField] private float gameStartDelay = 3f;
-    [SerializeField] private bool autoAssignRoles = true;
 
     // Player Management
     private readonly List<PlayerState> _players = new();
@@ -60,7 +59,7 @@ public class GameManager : MonoBehaviour
 
     private void InitializeSingleton()
     {
-        if (Instance != null && Instance != this)
+        if (Instance && Instance != this)
         {
             Destroy(gameObject);
             return;
@@ -127,7 +126,7 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"Player registered. Total players: {_players.Count}");
 
-        if (autoAssignRoles && CanAssignRoles())
+        if (CanAssignRoles())
         {
             AssignPlayerRoles();
         }
@@ -164,11 +163,11 @@ public class GameManager : MonoBehaviour
     private void RegisterPlayerRole(PlayerState player)
     {
         PlayerRole playerRole = player.GetComponent<PlayerRole>();
-        if (playerRole != null && !_playerRoles.Contains(playerRole))
+        if (playerRole && !_playerRoles.Contains(playerRole))
         {
             _playerRoles.Add(playerRole);
         }
-        else if (playerRole == null)
+        else if (!playerRole)
         {
             Debug.LogError("PlayerRole component not found on player");
         }
@@ -177,7 +176,7 @@ public class GameManager : MonoBehaviour
     private void UnregisterPlayerRole(PlayerState player)
     {
         PlayerRole playerRole = player.GetComponent<PlayerRole>();
-        if (playerRole != null && _playerRoles.Contains(playerRole))
+        if (playerRole && _playerRoles.Contains(playerRole))
         {
             _playerRoles.Remove(playerRole);
         }
@@ -188,7 +187,7 @@ public class GameManager : MonoBehaviour
         foreach (PlayerState player in _players)
         {
             PlayerVisual visual = player.GetComponent<PlayerVisual>();
-            if (visual != null)
+            if (visual)
             {
                 visual.SetPlayerNickname(player.PlayerNickname);
             }
@@ -198,24 +197,14 @@ public class GameManager : MonoBehaviour
     private void HandlePlayerDisconnection(NetworkConnection conn)
     {
         PlayerState disconnectedPlayer = _players.FirstOrDefault(p => p.connectionToClient == conn);
-        if (disconnectedPlayer != null)
+        if (disconnectedPlayer)
         {
             UnregisterPlayer(disconnectedPlayer);
         }
 
-        if (_playerStableIndices.ContainsKey(conn))
-        {
-            _playerStableIndices.Remove(conn);
-        }
+        _playerStableIndices.Remove(conn);
     }
-
-    public int GetPlayerStableIndex(PlayerState player)
-    {
-        if (player.connectionToClient == null) return -1;
-        
-        return _playerStableIndices.TryGetValue(player.connectionToClient, out int index) ? index : -1;
-    }
-
+    
     #endregion
 
     #region Role Assignment
@@ -239,7 +228,7 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"Roles assigned to {_playerRoles.Count} players");
         
-        if (NetworkGameEvents.Instance != null)
+        if (NetworkGameEvents.Instance)
         {
             NetworkGameEvents.Instance.RpcRolesAssigned();
         }
@@ -247,10 +236,11 @@ public class GameManager : MonoBehaviour
     
     private List<RoleType> GenerateRoleDistribution(int playerCount)
     {
-        List<RoleType> roles = new();
-
-        roles.Add(RoleType.Sheriff);
-        roles.Add(RoleType.Renegade);
+        List<RoleType> roles = new()
+        {
+            RoleType.Sheriff,
+            RoleType.Renegade
+        };
 
         int outlawCount = playerCount switch
         {
@@ -303,10 +293,11 @@ public class GameManager : MonoBehaviour
         _currentGameState = GameState.InProgress;
         _gameInProgress = true;
 
-        if (NetworkGameEvents.Instance != null)
+        if (NetworkGameEvents.Instance)
         {
             NetworkGameEvents.Instance.RpcGameInitialized();
         }
+
         Debug.Log("Game initialized and in progress");
     }
     
@@ -317,7 +308,7 @@ public class GameManager : MonoBehaviour
         _clientsSceneLoadedCount++;
         Debug.Log($"Clients loaded scene: {_clientsSceneLoadedCount}/{_players.Count}");
     
-        if (_clientsSceneLoadedCount == _players.Count && autoAssignRoles && CanAssignRoles()) 
+        if (_clientsSceneLoadedCount == _players.Count && CanAssignRoles()) 
         {
             AssignPlayerRoles();
         }
@@ -362,7 +353,6 @@ public class GameManager : MonoBehaviour
         if (!anyOutlawAlive && !anyRenegadeAlive)
         {
             EndGame("Sheriff");
-            return;
         }
     }
     
@@ -375,17 +365,23 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"Game ended. Winner: {winningTeam}");
         
-        if (NetworkGameEvents.Instance != null)
+        // Collect all player roles for the end game display
+        List<PlayerRoleInfo> allPlayerRoles = new();
+        foreach (var playerRole in _playerRoles)
         {
-            NetworkGameEvents.Instance.RpcGameOver(winningTeam);
+            if (playerRole.Player)
+            {
+                allPlayerRoles.Add(new PlayerRoleInfo
+                {
+                    playerName = playerRole.Player.PlayerNickname,
+                    role = playerRole.CurrentRole
+                });
+            }
         }
-    }
-
-    public void ForceEndGame()
-    {
-        if (_gameInProgress && NetworkServer.active)
+        
+        if (NetworkGameEvents.Instance)
         {
-            EndGame("Game Terminated");
+            NetworkGameEvents.Instance.RpcGameOver(winningTeam, allPlayerRoles.ToArray());
         }
     }
 
@@ -426,9 +422,16 @@ public class GameManager : MonoBehaviour
     private void OnSceneLoadedMessage(SceneLoadedMessage msg) 
     {
         // Only server should handle scene load notifications and send RPCs
-        if (NetworkServer.active && NetworkGameEvents.Instance != null)
+        if (NetworkServer.active && NetworkGameEvents.Instance)
         {
             NetworkGameEvents.Instance.RpcSceneLoaded();
         }
     }
+}
+
+[System.Serializable]
+public struct PlayerRoleInfo
+{
+    public string playerName;
+    public RoleType role;
 }

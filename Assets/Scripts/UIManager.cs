@@ -10,6 +10,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private List<PlayerRoleMapping> playerRoleMappings = new List<PlayerRoleMapping>();
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI gameOverText;
+    [SerializeField] private TextMeshProUGUI playerRolesText;
     [SerializeField] private Image gunCooldown;
     [SerializeField] private CardManager[] slotsUI;
     [SerializeField] private TextMeshProUGUI bulletCounts;
@@ -69,11 +70,36 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void Gameover(string gameoverText)
+    public void GameoverWithRoles(string gameoverText, PlayerRoleInfo[] playerRoles)
     {
         gameOverPanel.SetActive(true);
         gameOverText.text = gameoverText;
+        
+        if (playerRolesText && playerRoles != null)
+        {
+            string rolesText = "\n\nPlayer Roles:\n";
+            foreach (var playerRole in playerRoles)
+            {
+                string roleDisplayName = GetRoleDisplayName(playerRole.role);
+                rolesText += $"{playerRole.playerName} - {roleDisplayName}\n";
+            }
+
+            playerRolesText.text = rolesText;
+        }
+        
         LockCursor(false);
+    }
+
+    private string GetRoleDisplayName(RoleType role)
+    {
+        return role switch
+        {
+            RoleType.Sheriff => "Sheriff",
+            RoleType.Deputy => "Deputy",
+            RoleType.Outlaw => "Outlaw",
+            RoleType.Renegade => "Renegade",
+            _ => "Unknown"
+        };
     }
 
     private void OnNetworkStopped()
@@ -82,6 +108,7 @@ public class UIManager : MonoBehaviour
         {
             gameOverPanel.SetActive(false);
             gameOverText.text = "";
+            if (playerRolesText) playerRolesText.text = "";
         }
 
         OnRoleChanged(RoleType.None);
