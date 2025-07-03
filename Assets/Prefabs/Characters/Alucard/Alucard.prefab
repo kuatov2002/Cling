@@ -898,6 +898,7 @@ MonoBehaviour:
   activeItemIndex: 0
   hotkeys: 3100000032000000330000003400000035000000
   useItemKey: 101
+  moneyTakeInterval: 10
 --- !u!114 &2851042032946622653
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -965,9 +966,8 @@ MonoBehaviour:
   cooldown: 2.5
   gunTransform: {fileID: 5548219211156043638}
   maxBulletAmount: 6
-  reloadInterval: 12
-  ammoCost: 1
-  bulletAmount: 3
+  reloadInterval: 999
+  bulletAmount: 1
   healAmount: 10
 --- !u!114 &-545436430807402659
 MonoBehaviour:
@@ -1037,7 +1037,10 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  data: {fileID: 11400000, guid: 44445d70e33ee7f40a52f366b1438495, type: 2}
+  itemName: 
+  itemDescription: 
+  itemTooltip: 
+  itemIcon: {fileID: 0}
   healAmount: 50
 --- !u!1 &7472770470738815705
 GameObject:
