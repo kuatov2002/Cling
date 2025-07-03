@@ -26,10 +26,11 @@ public class AlucardBullet : Bullet
             // Heal the owner
             if (NetworkServer.spawned.TryGetValue(_ownerNetId, out NetworkIdentity ownerIdentity))
             {
-                var ownerHealth = ownerIdentity.GetComponent<IDamageable>();
-                ownerHealth?.TakeDamage(-_healAmount);
+                var ownerHealth = ownerIdentity.GetComponent<IHealable>();
+                ownerHealth?.Heal(_healAmount);
             }
         }
+
         DestroySelf();
     }
 }

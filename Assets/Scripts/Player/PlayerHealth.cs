@@ -2,7 +2,7 @@ using Mirror;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class PlayerHealth : NetworkBehaviour, IDamageable
+public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
 {
     [SerializeField] protected float maxHealth = 100f;
     [SerializeField] private Image healthBar;
@@ -20,8 +20,14 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
     public virtual void TakeDamage(float damage)
     {
         if (!isServer) return;
-        _currentHealth = Mathf.Clamp(_currentHealth - damage, 0f, maxHealth);
+        _currentHealth = Mathf.Max(_currentHealth - damage, 0f);
         if (_currentHealth == 0f) Die();
+    }
+
+    public virtual void Heal(float healAmount)
+    {
+        if (!isServer) return;
+        _currentHealth = Mathf.Min(_currentHealth + healAmount, maxHealth);
     }
 
     private void OnHealthChanged(float oldValue, float newValue)
@@ -49,4 +55,6 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
         // Создаем ангела только локально у умершего игрока
         Instantiate(angelPrefab, transform.position, transform.rotation);
     }
+
+
 }

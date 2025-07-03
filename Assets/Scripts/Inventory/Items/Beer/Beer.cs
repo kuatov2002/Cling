@@ -11,7 +11,7 @@ public class Beer : BaseItem
         PlayerHealth playerHealth = playerInventory.GetComponent<PlayerHealth>();
         if (playerHealth)
         {
-            playerHealth.TakeDamage(-healAmount); // Negative damage = healing
+            playerHealth.Heal(healAmount); // Negative damage = healing
             Debug.Log($"Used {itemName} - Healed for {healAmount}");
         }
     }
