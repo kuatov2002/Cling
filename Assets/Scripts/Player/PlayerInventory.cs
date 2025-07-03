@@ -22,6 +22,10 @@ public class PlayerInventory : NetworkBehaviour
     [SyncVar(hook = nameof(OnMoneyChanged))]
     private int money = 2;
 
+    // Синхронизация слотов инвентаря
+    [SyncVar(hook = nameof(OnInventoryChanged))]
+    private string inventoryData = "";
+
     public BaseItem CurrentActiveSlot => 
         inventorySlots != null && activeItemIndex < inventorySlots.Length 
             ? inventorySlots[activeItemIndex] 
@@ -38,16 +42,16 @@ public class PlayerInventory : NetworkBehaviour
 
     public override void OnStartServer()
     {
-        // Запуск пассивного дохода только на сервере
         _lastMoneyTakeTime = (float)NetworkTime.time;
         StartCoroutine(MoneyTakeRoutine());
+        SyncInventoryToClients();
     }
 
     public override void OnStartClient()
     {
-        // Синхронизация при подключении
         if (isLocalPlayer)
         {
+            DeserializeInventory();
             UpdateActiveItem();
             UpdateMoneyDisplay();
         }
@@ -80,6 +84,18 @@ public class PlayerInventory : NetworkBehaviour
         if (isLocalPlayer)
         {
             UpdateMoneyDisplay();
+        }
+    }
+
+    private void OnInventoryChanged(string oldData, string newData)
+    {
+        if (!isServer)
+        {
+            DeserializeInventory();
+            if (isLocalPlayer)
+            {
+                UpdateActiveItem();
+            }
         }
     }
 
@@ -181,6 +197,12 @@ public class PlayerInventory : NetworkBehaviour
             if (!inventorySlots[i])
             {
                 inventorySlots[i] = item;
+                
+                if (isServer)
+                {
+                    SyncInventoryToClients();
+                }
+                
                 if (i == activeItemIndex)
                 {
                     UpdateActiveItem();
@@ -208,6 +230,11 @@ public class PlayerInventory : NetworkBehaviour
 
         inventorySlots[slotIndex] = null;
         
+        if (isServer)
+        {
+            SyncInventoryToClients();
+        }
+        
         if (slotIndex == activeItemIndex)
         {
             UpdateActiveItem();
@@ -233,19 +260,12 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
-    [TargetRpc]
-    private void TargetSyncInventory(NetworkConnection target)
-    {
-        UpdateActiveItem();
-        UpdateMoneyDisplay();
-    }
-
     [Command]
     public void CmdAddItem(BaseItem item)
     {
         if (AddItem(item))
         {
-            TargetSyncInventory(connectionToClient);
+            SyncInventoryToClients();
         }
     }
     
@@ -262,7 +282,73 @@ public class PlayerInventory : NetworkBehaviour
             item.Use(this);
             inventorySlots[slotIndex] = null;
             
-            TargetSyncInventory(connectionToClient);
+            SyncInventoryToClients();
         }
+    }
+
+    [Server]
+    private void SyncInventoryToClients()
+    {
+        inventoryData = SerializeInventory();
+    }
+
+    private string SerializeInventory()
+    {
+        string result = "";
+        for (int i = 0; i < inventorySlots.Length; i++)
+        {
+            if (inventorySlots[i])
+            {
+                result += $"{i}:{inventorySlots[i].itemName};";
+            }
+        }
+
+        return result;
+    }
+
+    private void DeserializeInventory()
+    {
+        // Очищаем инвентарь
+        for (int i = 0; i < inventorySlots.Length; i++)
+        {
+            inventorySlots[i] = null;
+        }
+
+        if (string.IsNullOrEmpty(inventoryData)) return;
+
+        string[] slots = inventoryData.Split(';');
+        foreach (string slot in slots)
+        {
+            if (string.IsNullOrEmpty(slot)) continue;
+
+            string[] parts = slot.Split(':');
+            if (parts.Length == 2)
+            {
+                int index = int.Parse(parts[0]);
+                string itemName = parts[1];
+                
+                // Находим предмет по имени (можно заменить на более сложную логику)
+                BaseItem item = FindItemByName(itemName);
+                if (item && index < inventorySlots.Length)
+                {
+                    inventorySlots[index] = item;
+                }
+            }
+        }
+    }
+
+    private BaseItem FindItemByName(string itemName)
+    {
+        Debug.Log($"пытаюсь найти Items/{itemName}");
+        // Простой поиск по имени в Resources или используйте ItemDatabase
+        GameObject itemPrefab = Resources.Load<GameObject>($"Items/{itemName}");
+        if (itemPrefab)
+        {
+            Debug.Log($"Нашел Items/{itemName}");
+            return itemPrefab.GetComponent<BaseItem>();
+        }
+
+        Debug.Log($"Не наход Items/{itemName}");
+        return null;
     }
 }

@@ -76,7 +76,7 @@ public class CardManager : MonoBehaviour, IPointerDownHandler, IPointerEnterHand
 
     public bool SetItem(string itemName, Sprite itemIcon)
     {
-        if ((isOccupied && !useAsDrag) || !itemData)
+        if (isOccupied && !useAsDrag)
         {
             return false;
         }
