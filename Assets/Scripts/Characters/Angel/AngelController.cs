@@ -1,22 +1,14 @@
 using System.Linq;
-using Mirror;
-using UnityEngine;
 using Unity.Cinemachine;
+using UnityEngine;
 
-[RequireComponent(typeof(CharacterController))]
-public class PlayerMovement : NetworkBehaviour
+public class AngelController : MonoBehaviour
 {
     [Header("Настройки движения")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float jumpHeight = 2f;
     [SerializeField] private float gravity = -9.81f;
-    [SerializeField] private LayerMask groundLayer;
     [SerializeField] private Transform followTarget;
-    [SerializeField] private Transform groundCheck;
-    [SerializeField] private float groundDistance = 0.4f;
-    
-    [Header("Камера FreeLook")]
-    [SerializeField] private Gun gun;
     
     private AutoAimSystem _autoAimSystem;
     private CharacterController _controller;
@@ -24,17 +16,14 @@ public class PlayerMovement : NetworkBehaviour
     private bool _isGrounded;
     private CinemachineCamera[] _freeLookCam;
     private Vector2 _look;
-    private bool _isAiming = false;
     
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
     }
 
-    public override void OnStartLocalPlayer()
+    private void Start()
     {
-        if (!isLocalPlayer) return;
-        
         _autoAimSystem = GetComponent<AutoAimSystem>();
         _freeLookCam = FindObjectsOfType<CinemachineCamera>();
         _freeLookCam = _freeLookCam
@@ -53,59 +42,16 @@ public class PlayerMovement : NetworkBehaviour
 
     private void Update()
     {
-        if (!isLocalPlayer) return;
-
-        HandleGroundCheck();
         HandleJump();
-        HandleShooting();
         HandleMouseLook();
         HandleMovement();
     }
-
-    private void HandleGroundCheck()
-    {
-        _isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundLayer);
-
-        if (_isGrounded && _velocity.y < 0)
-        {
-            _velocity.y = -2f;
-        }
-    }
-
+    
     private void HandleJump()
     {
-        if (Input.GetButtonDown("Jump") && _isGrounded)
+        if (Input.GetButtonDown("Jump"))
         {
             _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
-    }
-
-    private void HandleShooting()
-    {
-        if (Input.GetButtonDown("Fire1"))
-        {
-            if (gun.Charge())
-            {
-                _isAiming = true;
-                _freeLookCam[0].gameObject.SetActive(false);
-            }
-        }
-
-        if (Input.GetButtonUp("Fire1"))
-        {
-            if (gun.Fire())
-            {
-                _isAiming = false;
-                _freeLookCam[0].gameObject.SetActive(true);
-            }
-        }
-
-        // Cancel charge on right mouse button
-        if (Input.GetButtonDown("Fire2") && _isAiming)
-        {
-            gun.CancelCharge();
-            _isAiming = false;
-            _freeLookCam[0].gameObject.SetActive(true);
         }
     }
 
@@ -113,19 +59,6 @@ public class PlayerMovement : NetworkBehaviour
     {
         _look.x = Input.GetAxis("Mouse X");
         _look.y = -Input.GetAxis("Mouse Y");
-
-        Vector3 originalDirection = followTarget.forward;
-        
-        // Apply auto-aim when aiming
-        if (_isAiming && _autoAimSystem)
-        {
-            Transform target = _autoAimSystem.GetBestTarget(originalDirection);
-            if (target)
-            {
-                Vector3 adjustedDirection = _autoAimSystem.GetAdjustedAimDirection(originalDirection, target);
-                followTarget.rotation = Quaternion.LookRotation(adjustedDirection);
-            }
-        }
         
         // Standard mouse look
         followTarget.rotation *= Quaternion.AngleAxis(_look.x, Vector3.up);

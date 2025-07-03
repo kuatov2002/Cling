@@ -6,7 +6,8 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
 {
     [SerializeField] protected float maxHealth = 100f;
     [SerializeField] private Image healthBar;
-
+    [SerializeField] private GameObject angelPrefab;
+    
     [SyncVar(hook = nameof(OnHealthChanged))]
     protected float _currentHealth;
 
@@ -31,7 +32,21 @@ public class PlayerHealth : NetworkBehaviour, IDamageable
 
     protected void Die()
     {
+        if (!isServer) return;
+    
         GetComponent<PlayerState>().CurrentState = PlayerState.State.Dead;
-        Destroy(gameObject);
+    
+        // Вызываем RPC только для владельца игрока
+        SpawnAngelForPlayer();
+    
+        // Уничтожаем игрока для всех
+        NetworkServer.Destroy(gameObject);
+    }
+
+    [TargetRpc]
+    private void SpawnAngelForPlayer()
+    {
+        // Создаем ангела только локально у умершего игрока
+        Instantiate(angelPrefab, transform.position, transform.rotation);
     }
 }
