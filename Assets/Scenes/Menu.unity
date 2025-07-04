@@ -3535,7 +3535,6 @@ RectTransform:
   - {fileID: 1527787289}
   - {fileID: 742666103}
   - {fileID: 462890614}
-  - {fileID: 1778081499}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -5277,6 +5276,7 @@ RectTransform:
   - {fileID: 983307270}
   - {fileID: 149242483}
   - {fileID: 706737428}
+  - {fileID: 1778081499}
   m_Father: {fileID: 913439113}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -5707,12 +5707,12 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1778081498}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 913439113}
+  m_Father: {fileID: 1527787289}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}

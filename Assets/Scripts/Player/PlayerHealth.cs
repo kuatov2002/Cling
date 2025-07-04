@@ -41,12 +41,31 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
         if (!isServer) return;
     
         GetComponent<PlayerState>().CurrentState = PlayerState.State.Dead;
-    
-        // Вызываем RPC только для владельца игрока
+        
+        // Получаем данные игрока для уведомления
+        PlayerState playerState = GetComponent<PlayerState>();
+        PlayerRole playerRole = GetComponent<PlayerRole>();
+        
+        string playerNickname = playerState?.PlayerNickname ?? "Unknown";
+        RoleType playerRoleType = playerRole?.CurrentRole ?? RoleType.None;
+        
+        // Отправляем уведомление всем клиентам
+        RpcNotifyPlayerDeath(playerNickname, playerRoleType);
+        
+        // Создаем ангела только для владельца игрока
         SpawnAngelForPlayer();
-    
+        
         // Уничтожаем игрока для всех
         NetworkServer.Destroy(gameObject);
+    }
+
+    [ClientRpc]
+    private void RpcNotifyPlayerDeath(string playerNickname, RoleType playerRole)
+    {
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowNotification($"{playerNickname} ({playerRole}) died!");
+        }
     }
 
     [TargetRpc]
@@ -55,6 +74,4 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
         // Создаем ангела только локально у умершего игрока
         Instantiate(angelPrefab, transform.position, transform.rotation);
     }
-
-
 }
