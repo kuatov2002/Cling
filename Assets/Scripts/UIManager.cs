@@ -16,6 +16,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI bulletCounts;
     [SerializeField] private TextMeshProUGUI playerMoney;
     [SerializeField] TextMeshProUGUI interactText;
+    [SerializeField] private NotificationSystem notificationSystem;
     
     private bool _cursorLocked;
     [SerializeField] private KeyCode lockKeyCode = KeyCode.LeftAlt;
@@ -37,6 +38,12 @@ public class UIManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         
         if (gameOverPanel) gameOverPanel.SetActive(false);
+        
+        // Initialize notification system if not assigned
+        if (notificationSystem == null)
+        {
+            notificationSystem = GetComponent<NotificationSystem>();
+        }
         
         RoomManager.HostStopped += OnNetworkStopped;
         RoomManager.ClientStopped += OnNetworkStopped;
@@ -211,6 +218,15 @@ public class UIManager : MonoBehaviour
             }
             
             slotsUI[i].SetActive(i == activeItemIndex);
+        }
+    }
+    
+    // Notification methods
+    public void ShowNotification(string message)
+    {
+        if (notificationSystem != null)
+        {
+            notificationSystem.ShowNotification(message);
         }
     }
 }
