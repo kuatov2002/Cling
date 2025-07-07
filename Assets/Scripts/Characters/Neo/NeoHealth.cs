@@ -9,18 +9,36 @@ public class NeoHealth : PlayerHealth
     [SerializeField] private float shieldDuration = 2f;
     [SerializeField] private float teleportRadius = 0.5f;
     [SerializeField] private LayerMask groundLayer = 1;
+    [SerializeField] private Sprite neoAbilityIcon;
     
-    private bool isShieldOnCooldown = false;
-    private Coroutine shieldCoroutine;
+    private bool _isShieldOnCooldown = false;
+    private Coroutine _shieldCoroutine;
+    private const string NeoAbilityName = "Neo Shield";
+
+    public override void OnStartLocalPlayer()
+    {
+        if (isLocalPlayer)
+        {
+            RegisterNeoAbility();
+        }
+    }
+
+    private void RegisterNeoAbility()
+    {
+        if (UIManager.Instance && neoAbilityIcon)
+        {
+            UIManager.Instance.RegisterAbility(NeoAbilityName, shieldRechargeTime, neoAbilityIcon);
+        }
+    }
 
     public override void TakeDamage(float damage)
     {
         if (!isServer) return;
         
-        if (!isShieldOnCooldown)
+        if (!_isShieldOnCooldown)
         {
             ActivateShield();
-            return; // First hit activates shield, no damage taken
+            return;
         }
         
         base.TakeDamage(damage);
@@ -29,31 +47,28 @@ public class NeoHealth : PlayerHealth
     [Server]
     private void ActivateShield()
     {
-        if (isShieldOnCooldown) return;
+        if (_isShieldOnCooldown) return;
         
-        isShieldOnCooldown = true;
+        _isShieldOnCooldown = true;
         
-        // Activate shield visual
-        RpcActivateShield();
-        
-        // Teleport to random position
+        // Send server time to clients for accurate cooldown tracking
+        double serverTime = NetworkTime.time;
+        RpcActivateShield(serverTime);
         TeleportToRandomPosition();
         
-        // Start shield duration and cooldown
-        if (shieldCoroutine != null)
-            StopCoroutine(shieldCoroutine);
-        shieldCoroutine = StartCoroutine(ShieldSequence());
+        if (_shieldCoroutine != null)
+            StopCoroutine(_shieldCoroutine);
+        _shieldCoroutine = StartCoroutine(ShieldSequence());
     }
 
     [Server]
     private void TeleportToRandomPosition()
     {
         Vector3 randomDirection = Random.insideUnitSphere * teleportRadius;
-        randomDirection.y = 0; // Keep on same height level
+        randomDirection.y = 0;
         
         Vector3 teleportPosition = transform.position + randomDirection;
         
-        // Ensure position is on ground
         if (Physics.Raycast(teleportPosition + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 20f, groundLayer))
         {
             teleportPosition = hit.point;
@@ -66,23 +81,30 @@ public class NeoHealth : PlayerHealth
     [Server]
     private IEnumerator ShieldSequence()
     {
-        // Shield active duration
         yield return new WaitForSeconds(shieldDuration);
         
         RpcDeactivateShield();
         
-        // Shield cooldown
         yield return new WaitForSeconds(shieldRechargeTime);
         
-        isShieldOnCooldown = false;
+        _isShieldOnCooldown = false;
         RpcShieldReady();
     }
 
     [ClientRpc]
-    private void RpcActivateShield()
+    private void RpcActivateShield(double serverActivationTime)
     {
         if (shield)
             shield.SetActive(true);
+            
+        if (isLocalPlayer && UIManager.Instance)
+        {
+            // Calculate remaining cooldown based on server time
+            double elapsed = NetworkTime.time - serverActivationTime;
+            float remainingCooldown = Mathf.Max(0f, (shieldDuration + shieldRechargeTime) - (float)elapsed);
+            
+            UIManager.Instance.StartAbilityCooldownWithTime(NeoAbilityName, remainingCooldown);
+        }
     }
 
     [ClientRpc]
@@ -95,19 +117,26 @@ public class NeoHealth : PlayerHealth
     [ClientRpc]
     private void RpcTeleportEffect(Vector3 position)
     {
-        // Add teleport visual effects here if needed
         transform.position = position;
     }
 
     [ClientRpc]
     private void RpcShieldReady()
     {
-        // Add shield ready notification/effect here if needed
+        if (isLocalPlayer && UIManager.Instance)
+        {
+            UIManager.Instance.ForceAbilityReady(NeoAbilityName);
+        }
     }
 
-    private void OnDestroy()
+    protected override void Die()
     {
-        if (shieldCoroutine != null)
-            StopCoroutine(shieldCoroutine);
+        if (_shieldCoroutine != null)
+            StopCoroutine(_shieldCoroutine);
+            
+        if (isLocalPlayer && UIManager.Instance)
+        {
+            UIManager.Instance.UnregisterAbility(NeoAbilityName);
+        }
     }
 }

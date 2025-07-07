@@ -1117,6 +1117,7 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 1
+  neoAbilityIcon: {fileID: 21300000, guid: 223ca1f3716ea384c949a11e90f14e2b, type: 3}
 --- !u!1 &6295896651892436282
 GameObject:
   m_ObjectHideFlags: 0

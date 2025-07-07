@@ -17,6 +17,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI playerMoney;
     [SerializeField] TextMeshProUGUI interactText;
     [SerializeField] private NotificationSystem notificationSystem;
+    [SerializeField] private AbilityUI abilityUI;
     
     private bool _cursorLocked;
     [SerializeField] private KeyCode lockKeyCode = KeyCode.LeftAlt;
@@ -39,10 +40,14 @@ public class UIManager : MonoBehaviour
         
         if (gameOverPanel) gameOverPanel.SetActive(false);
         
-        // Initialize notification system if not assigned
         if (notificationSystem == null)
         {
             notificationSystem = GetComponent<NotificationSystem>();
+        }
+        
+        if (abilityUI == null)
+        {
+            abilityUI = GetComponent<AbilityUI>();
         }
         
         RoomManager.HostStopped += OnNetworkStopped;
@@ -221,12 +226,74 @@ public class UIManager : MonoBehaviour
         }
     }
     
-    // Notification methods
     public void ShowNotification(string message)
     {
         if (notificationSystem != null)
         {
             notificationSystem.ShowNotification(message);
+        }
+    }
+    
+    // Ability UI Methods
+    public void RegisterAbility(string abilityName, float cooldownDuration, Sprite icon)
+    {
+        if (abilityUI != null)
+        {
+            abilityUI.RegisterAbility(abilityName, cooldownDuration, icon);
+        }
+    }
+    
+    public void UnregisterAbility(string abilityName)
+    {
+        if (abilityUI != null)
+        {
+            abilityUI.UnregisterAbility(abilityName);
+        }
+    }
+    
+    public void StartAbilityCooldown(string abilityName)
+    {
+        if (abilityUI != null)
+        {
+            abilityUI.StartCooldown(abilityName);
+        }
+    }
+    
+    public bool IsAbilityReady(string abilityName)
+    {
+        if (abilityUI != null)
+        {
+            return abilityUI.IsAbilityReady(abilityName);
+        }
+
+        return false;
+    }
+    
+    public float GetAbilityCooldownProgress(string abilityName)
+    {
+        if (abilityUI != null)
+        {
+            return abilityUI.GetCooldownProgress(abilityName);
+        }
+
+        return 1f;
+    }
+    
+    // Add these methods to UIManager class
+    
+    public void StartAbilityCooldownWithTime(string abilityName, float remainingTime)
+    {
+        if (abilityUI != null)
+        {
+            abilityUI.StartCooldownWithTime(abilityName, remainingTime);
+        }
+    }
+    
+    public void ForceAbilityReady(string abilityName)
+    {
+        if (abilityUI != null)
+        {
+            abilityUI.ForceAbilityReady(abilityName);
         }
     }
 }

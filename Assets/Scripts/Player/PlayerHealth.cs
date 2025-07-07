@@ -36,7 +36,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
             healthBar.fillAmount = newValue / maxHealth;
     }
 
-    protected void Die()
+    protected virtual void Die()
     {
         if (!isServer) return;
     
