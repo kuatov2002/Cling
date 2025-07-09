@@ -138,5 +138,7 @@ public class NeoHealth : PlayerHealth
         {
             UIManager.Instance.UnregisterAbility(NeoAbilityName);
         }
+        
+        base.Die();
     }
 }
