@@ -1,3 +1,4 @@
+using System.Collections;
 using Mirror;
 using UnityEngine;
 using UnityEngine.UI;
@@ -39,22 +40,31 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     protected virtual void Die()
     {
         if (!isServer) return;
-    
+
         GetComponent<PlayerState>().CurrentState = PlayerState.State.Dead;
-        
+    
         // Получаем данные игрока для уведомления
         PlayerState playerState = GetComponent<PlayerState>();
         PlayerRole playerRole = GetComponent<PlayerRole>();
-        
+    
         string playerNickname = playerState?.PlayerNickname ?? "Unknown";
         RoleType playerRoleType = playerRole?.CurrentRole ?? RoleType.None;
-        
+    
         // Отправляем уведомление всем клиентам
         RpcNotifyPlayerDeath(playerNickname, playerRoleType);
-        
+    
         // Создаем ангела только для владельца игрока
         SpawnAngelForPlayer();
-        
+    
+        // Задерживаем уничтожение объекта, чтобы RPC успел выполниться
+        StartCoroutine(DestroyAfterDelay());
+    }
+
+    private IEnumerator DestroyAfterDelay()
+    {
+        // Ждем один кадр, чтобы RPC успел отправиться
+        yield return null;
+    
         // Уничтожаем игрока для всех
         NetworkServer.Destroy(gameObject);
     }
