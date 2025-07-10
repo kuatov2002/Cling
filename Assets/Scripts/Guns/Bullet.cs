@@ -8,6 +8,8 @@ public class Bullet : NetworkBehaviour
 
     protected float _damage;
     protected Vector3 _direction;
+    
+    [SerializeField] protected ParticleSystem hitEffectPrefab; // Префаб эффекта попадания
 
     public override void OnStartServer()
     {
@@ -33,19 +35,44 @@ public class Bullet : NetworkBehaviour
         Vector3 start = transform.position;
         Vector3 end = start + _direction * moveDistance;
 
-        // Только сервер проверяет коллизии и наносит урон
         if (isServer)
         {
             if (Physics.Raycast(start, _direction, out RaycastHit hit, moveDistance))
             {
                 var target = hit.collider.GetComponent<IDamageable>();
-                ApplyDamage(target);
+
+                if (target != null)
+                {
+                    // Создаем эффект локально на сервере (для хоста)
+                    PlayHitEffectLocal(hit.point, hit.normal);
+                    // Отправляем RPC клиентам
+                    RpcPlayHitEffect(hit.point, hit.normal);
+                    ApplyDamage(target);
+                }
+
                 return;
             }
         }
 
-        // Все клиенты двигают пулю визуально
         transform.position = end;
+    }
+
+    [Server]
+    void PlayHitEffectLocal(Vector3 hitPoint, Vector3 hitNormal)
+    {
+        if (hitEffectPrefab)
+        {
+            Instantiate(hitEffectPrefab, hitPoint, Quaternion.LookRotation(hitNormal));
+        }
+    }
+
+    [ClientRpc]
+    protected void RpcPlayHitEffect(Vector3 hitPoint, Vector3 hitNormal)
+    {
+        if (hitEffectPrefab)
+        {
+            Instantiate(hitEffectPrefab, hitPoint, Quaternion.LookRotation(hitNormal));
+        }
     }
 
     [Server]

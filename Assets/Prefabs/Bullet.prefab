@@ -129,8 +129,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  speed: 250
-  lifeTime: 3
+  hitEffectPrefab: {fileID: 5991545297567742199, guid: 7fc22b0bfc693ef46b909c4203df9faf, type: 3}
 --- !u!54 &4283094814509313524
 Rigidbody:
   m_ObjectHideFlags: 0
