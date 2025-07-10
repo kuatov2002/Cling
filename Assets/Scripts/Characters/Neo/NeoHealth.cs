@@ -7,8 +7,6 @@ public class NeoHealth : PlayerHealth
     [SerializeField] private GameObject shield;
     [SerializeField] private float shieldRechargeTime = 10f;
     [SerializeField] private float shieldDuration = 2f;
-    [SerializeField] private float teleportRadius = 0.5f;
-    [SerializeField] private LayerMask groundLayer = 1;
     [SerializeField] private Sprite neoAbilityIcon;
     
     private bool _isShieldOnCooldown = false;
@@ -54,28 +52,10 @@ public class NeoHealth : PlayerHealth
         // Send server time to clients for accurate cooldown tracking
         double serverTime = NetworkTime.time;
         RpcActivateShield(serverTime);
-        TeleportToRandomPosition();
         
         if (_shieldCoroutine != null)
             StopCoroutine(_shieldCoroutine);
         _shieldCoroutine = StartCoroutine(ShieldSequence());
-    }
-
-    [Server]
-    private void TeleportToRandomPosition()
-    {
-        Vector3 randomDirection = Random.insideUnitSphere * teleportRadius;
-        randomDirection.y = 0;
-        
-        Vector3 teleportPosition = transform.position + randomDirection;
-        
-        if (Physics.Raycast(teleportPosition + Vector3.up * 10f, Vector3.down, out RaycastHit hit, 20f, groundLayer))
-        {
-            teleportPosition = hit.point;
-        }
-        
-        transform.position = teleportPosition;
-        RpcTeleportEffect(teleportPosition);
     }
 
     [Server]
@@ -112,12 +92,6 @@ public class NeoHealth : PlayerHealth
     {
         if (shield)
             shield.SetActive(false);
-    }
-
-    [ClientRpc]
-    private void RpcTeleportEffect(Vector3 position)
-    {
-        transform.position = position;
     }
 
     [ClientRpc]
