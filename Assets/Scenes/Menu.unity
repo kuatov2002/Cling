@@ -1520,6 +1520,8 @@ MonoBehaviour:
   - {fileID: 5538461023050153465, guid: 008ee4b8f1dcf7146a3907825a6e9c41, type: 3}
   - {fileID: 6823424542941286313, guid: 6571762b868d5a641ab81913cb25adf1, type: 3}
   - {fileID: 5538461023050153465, guid: b32664483d33e944891e6a2c9c41406a, type: 3}
+  - {fileID: 5538461023050153465, guid: ed50899509adbdb4a9af144934b7cefb, type: 3}
+  - {fileID: 5538461023050153465, guid: b9f81a40fba3ca8448bcf55ee57393b8, type: 3}
   - {fileID: 4716904436788592931, guid: 875c7df6afa68494cbec04d78525d8f6, type: 3}
   - {fileID: 5538461023050153465, guid: dcfb6539e83ae2545ad4deca8b7d1dd6, type: 3}
   exceptionsDisconnect: 1
@@ -1550,6 +1552,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 313dba5f918c13647853f82d3339fc32, type: 2}
   - {fileID: 11400000, guid: 8926d7c10b051ef43898fd2d15fa8214, type: 2}
   - {fileID: 11400000, guid: 998d8ae618c531042b8b9fee83c69f33, type: 2}
+  - {fileID: 11400000, guid: 3690c9a51b475b241b2b58bfe0dc3814, type: 2}
 --- !u!114 &389404822
 MonoBehaviour:
   m_ObjectHideFlags: 0
