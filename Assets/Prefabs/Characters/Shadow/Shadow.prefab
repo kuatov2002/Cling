@@ -773,6 +773,7 @@ MonoBehaviour:
   maxHealth: 100
   healthBar: {fileID: 6760398375058191348}
   angelPrefab: {fileID: 5538461023050153465, guid: a1c0e9e29a69bff419833fdc93141f3d, type: 3}
+  healEffect: {fileID: 7371974944114216946, guid: 75dec448cb6f22042a290e27774a5138, type: 3}
   invisibilityDuration: 2
 --- !u!114 &7838624479138037432
 MonoBehaviour:

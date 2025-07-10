@@ -5,7 +5,7 @@ using Mirror;
 
 public class AutoAimSystem : NetworkBehaviour
 {
-    private readonly float _aimRadius = 50f;
+    private readonly float _aimRadius = 80f;
     private readonly float _maxAimDistance = 100f;
     [SerializeField] private LayerMask targetLayerMask = -1;
     [SerializeField] private LayerMask obstacleLayerMask = -1;

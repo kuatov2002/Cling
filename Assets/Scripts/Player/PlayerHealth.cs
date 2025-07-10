@@ -8,6 +8,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     [SerializeField] protected float maxHealth = 100f;
     [SerializeField] private Image healthBar;
     [SerializeField] private GameObject angelPrefab;
+    [SerializeField] private ParticleSystem healEffect;
     
     [SyncVar(hook = nameof(OnHealthChanged))]
     protected float _currentHealth;
@@ -29,6 +30,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     {
         if (!isServer) return;
         _currentHealth = Mathf.Min(_currentHealth + healAmount, maxHealth);
+        Instantiate(healEffect, transform.position, Quaternion.identity);
     }
 
     private void OnHealthChanged(float oldValue, float newValue)

@@ -4,7 +4,7 @@ using UnityEngine;
 public class PhoenixHealth : PlayerHealth
 {
     [SerializeField, Range(0, 1)] private float reviveHealthPercentage = 0.5f;
-    [SerializeField] private GameObject reviveEffectPrefab;
+    [SerializeField] private ParticleSystem reviveEffectPrefab;
     
     [SyncVar] private bool hasRevived = false;
 

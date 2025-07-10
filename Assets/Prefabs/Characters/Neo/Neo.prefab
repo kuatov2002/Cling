@@ -1110,6 +1110,7 @@ MonoBehaviour:
   maxHealth: 80
   healthBar: {fileID: 6760398375058191348}
   angelPrefab: {fileID: 5538461023050153465, guid: a1c0e9e29a69bff419833fdc93141f3d, type: 3}
+  healEffect: {fileID: 7371974944114216946, guid: 75dec448cb6f22042a290e27774a5138, type: 3}
   shield: {fileID: 3667646855322776087}
   shieldRechargeTime: 10
   shieldDuration: 2
