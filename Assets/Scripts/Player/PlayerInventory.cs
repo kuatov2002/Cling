@@ -20,7 +20,7 @@ public class PlayerInventory : NetworkBehaviour
     [SerializeField] private KeyCode useItemKey = KeyCode.E;
 
     [SyncVar(hook = nameof(OnMoneyChanged))]
-    private int money = 2;
+    protected int money = 2;
 
     // Синхронизация слотов инвентаря
     [SyncVar(hook = nameof(OnInventoryChanged))]
@@ -177,7 +177,7 @@ public class PlayerInventory : NetworkBehaviour
     }
 
     [Server]
-    public bool SpendMoney(int amount)
+    public virtual bool SpendMoney(int amount)
     {
         if (money >= amount)
         {
