@@ -9,17 +9,13 @@ public class Gun : NetworkBehaviour
     [SerializeField] private float cooldown = 0.5f;
     [SerializeField] protected Transform gunTransform;
     [SerializeField] private int maxBulletAmount = 6;
-    [SerializeField] protected float reloadInterval = 7f;
     
     [SyncVar(hook = nameof(OnLastFireTimeChanged))]
     protected float LastFireTime = -Mathf.Infinity;
     
-    [SyncVar(hook = nameof(OnLastReloadTimeChanged))]
-    protected float LastReloadTime = -Mathf.Infinity;
-    
     [FormerlySerializedAs("BulletAmount")]
     [SyncVar(hook = nameof(OnBulletAmountChanged))]
-    [SerializeField] protected int bulletAmount = 3;
+    [SerializeField] protected int bulletAmount = 1;
     
     private bool _isCharged = false;
     private Camera _playerCamera;
@@ -35,12 +31,6 @@ public class Gun : NetworkBehaviour
         {
             StartCoroutine(CooldownUIRoutine());
             UpdateBulletUI();
-        }
-        
-        if (isServer)
-        {
-            LastReloadTime = (float)NetworkTime.time;
-            StartCoroutine(AutoReloadRoutine());
         }
     }
 
@@ -91,21 +81,6 @@ public class Gun : NetworkBehaviour
         return bulletAmount < maxBulletAmount && 
                _playerInventory && 
                _playerInventory.Money >= ammoCost;
-    }
-    
-    private System.Collections.IEnumerator AutoReloadRoutine()
-    {
-        while (true)
-        {
-            if (bulletAmount < maxBulletAmount && 
-                (float)NetworkTime.time - LastReloadTime >= reloadInterval)
-            {
-                bulletAmount++;
-                LastReloadTime = (float)NetworkTime.time;
-            }
-
-            yield return new WaitForSeconds(0.17f);
-        }
     }
     
     private System.Collections.IEnumerator CooldownUIRoutine()
@@ -197,11 +172,6 @@ public class Gun : NetworkBehaviour
     private void OnLastFireTimeChanged(float oldVal, float newVal)
     {
         _lastReportedProgress = -1f;
-    }
-    
-    private void OnLastReloadTimeChanged(float oldVal, float newVal)
-    {
-        // Optional: Add reload feedback here
     }
     
     private void OnBulletAmountChanged(int oldAmount, int newAmount)
