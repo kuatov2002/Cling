@@ -13,7 +13,7 @@ public class RoomManager : NetworkRoomManager
 
     [SerializeField] private int maxPlayers = 7;
 
-    private readonly Dictionary<NetworkConnection, NetworkRoomPlayer> _roomPlayers = new();
+    private readonly HashSet<int> _usedCharacterIndices = new();
     private int _currentPlayerCount = 0;
 
     [SerializeField] private List<CharacterData> characters = new List<CharacterData>();
@@ -45,11 +45,6 @@ public class RoomManager : NetworkRoomManager
 
     public override void OnRoomServerDisconnect(NetworkConnectionToClient conn)
     {
-        if (_roomPlayers.ContainsKey(conn))
-        {
-            _roomPlayers.Remove(conn);
-        }
-
         _currentPlayerCount = Mathf.Max(0, _currentPlayerCount - 1);
         Debug.Log($"Player disconnected. Total players: {_currentPlayerCount}");
         
@@ -57,21 +52,6 @@ public class RoomManager : NetworkRoomManager
         PlayersCountChanged?.Invoke(_currentPlayerCount);
         
         base.OnRoomServerDisconnect(conn);
-    }
-
-    public override void OnRoomServerAddPlayer(NetworkConnectionToClient conn)
-    {
-        base.OnRoomServerAddPlayer(conn);
-        
-        if (conn.identity != null)
-        {
-            NetworkRoomPlayer roomPlayer = conn.identity.GetComponent<NetworkRoomPlayer>();
-            if (roomPlayer != null)
-            {
-                _roomPlayers[conn] = roomPlayer;
-                Debug.Log($"Room player added for connection: {conn.connectionId}");
-            }
-        }
     }
 
     public override void OnRoomServerPlayersReady()
@@ -83,6 +63,9 @@ public class RoomManager : NetworkRoomManager
         }
 
         Debug.Log("All players ready. Starting game...");
+        
+        // Reset character indices for new game
+        _usedCharacterIndices.Clear();
         
         // Notify server/host
         GameStarted?.Invoke();
@@ -99,13 +82,15 @@ public class RoomManager : NetworkRoomManager
         NetworkClient.RegisterHandler<GameStartedMessage>(OnGameStartedMessage);
         NetworkClient.RegisterHandler<SceneLoadedMessage>(OnSceneLoadedMessage);
     }
+
     private void OnSceneLoadedMessage(SceneLoadedMessage msg) 
     {
-        if (NetworkServer.active && NetworkGameEvents.Instance != null)
+        if (NetworkServer.active && NetworkGameEvents.Instance)
         {
             NetworkGameEvents.Instance.RpcSceneLoaded();
         }
     }
+
     private void OnGameStartedMessage(GameStartedMessage msg)
     {
         // Only invoke on clients, not on host
@@ -123,9 +108,15 @@ public class RoomManager : NetworkRoomManager
             return null;
         }
 
-        // Select a random prefab
-        int randomIndex = Random.Range(0, characters.Count);
-        GameObject selectedPrefab = characters[randomIndex].characterPrefab;
+        // Get unique character index
+        int characterIndex = GetUniqueCharacterIndex();
+        if (characterIndex == -1)
+        {
+            Debug.LogError("No more unique characters available.");
+            return null;
+        }
+
+        GameObject selectedPrefab = characters[characterIndex].characterPrefab;
 
         // Instantiate at start position or default
         Transform startPos = GetStartPosition();
@@ -133,17 +124,50 @@ public class RoomManager : NetworkRoomManager
             ? Instantiate(selectedPrefab, startPos.position, startPos.rotation) 
             : Instantiate(selectedPrefab, Vector3.zero, Quaternion.identity);
 
-        // Optional: Debug logging
-        if (gamePlayer != null)
+        if (gamePlayer)
         {
             PlayerState playerState = gamePlayer.GetComponent<PlayerState>();
-            if (playerState != null)
+            if (playerState)
             {
-                Debug.Log($"Game player created for connection: {conn.connectionId}");
+                Debug.Log($"Game player created for connection: {conn.connectionId} with character index: {characterIndex}");
             }
         }
 
         return gamePlayer;
+    }
+
+    private int GetUniqueCharacterIndex()
+    {
+        if (_usedCharacterIndices.Count >= characters.Count)
+        {
+            return -1; // No more unique characters available
+        }
+
+        int attempts = 0;
+        int maxAttempts = characters.Count * 2; // Prevent infinite loop
+        
+        while (attempts < maxAttempts)
+        {
+            int randomIndex = Random.Range(0, characters.Count);
+            
+            if (_usedCharacterIndices.Add(randomIndex))
+            {
+                return randomIndex;
+            }
+            
+            attempts++;
+        }
+
+        // Fallback: return first available index
+        for (int i = 0; i < characters.Count; i++)
+        {
+            if (_usedCharacterIndices.Add(i))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     #endregion
@@ -211,7 +235,7 @@ public class RoomManager : NetworkRoomManager
 
     private void CleanupNetworkState()
     {
-        _roomPlayers.Clear();
+        _usedCharacterIndices.Clear();
         _currentPlayerCount = 0;
     }
 
@@ -229,7 +253,7 @@ public class RoomManager : NetworkRoomManager
     {
         bool result = base.OnRoomServerSceneLoadedForPlayer(conn, roomPlayer, gamePlayer);
 
-        if (result && NetworkServer.active && NetworkGameEvents.Instance != null) 
+        if (result && NetworkServer.active && NetworkGameEvents.Instance) 
         {
             conn.Send(new SceneLoadedMessage());
         }
@@ -237,7 +261,6 @@ public class RoomManager : NetworkRoomManager
         return result;
     }
 
-    
     #endregion
 }
 
