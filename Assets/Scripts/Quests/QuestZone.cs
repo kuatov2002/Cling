@@ -1,0 +1,126 @@
+using System.Linq;
+using Mirror;
+using UnityEngine;
+using Random = UnityEngine.Random;
+
+public class QuestZone : NetworkBehaviour
+{
+    [Header("Quest Zone Configuration")]
+    [SerializeField] private string zoneName = "Quest Giver";
+    [SerializeField] private Quest[] availableQuests;
+    [SerializeField] private KeyCode interactKey = KeyCode.E;
+    [SerializeField] private GameObject visualIndicator;
+    
+    [Header("Quest Templates")]
+    [SerializeField] private QuestTemplate[] questTemplates;
+    
+    private void Start()
+    {
+        if (visualIndicator)
+            visualIndicator.SetActive(false);
+            
+        // Генерируем квесты из шаблонов
+        GenerateQuestsFromTemplates();
+    }
+    
+    private void GenerateQuestsFromTemplates()
+    {
+        if (questTemplates == null || questTemplates.Length == 0) return;
+        
+        availableQuests = new Quest[questTemplates.Length];
+        for (int i = 0; i < questTemplates.Length; i++)
+        {
+            var template = questTemplates[i];
+            var destination = FindDestinationByName(template.destinationName);
+            
+            if (destination != null)
+            {
+                availableQuests[i] = new Quest(
+                    template.questId,
+                    template.questName,
+                    template.description,
+                    template.reward,
+                    destination.transform.position,
+                    template.destinationName,
+                    template.isRepeatable,
+                    template.repeatCooldown
+                );
+            }
+        }
+    }
+    
+    private QuestDestination FindDestinationByName(string name)
+    {
+        // Ищем все объекты типа QuestDestination без лишней сортировки
+        var destinations = FindObjectsByType<QuestDestination>(FindObjectsSortMode.None);
+        
+        // Быстрый поиск по имени
+        return destinations.FirstOrDefault(dest => dest.destinationName == name);
+    }
+    
+
+    private void OnTriggerStay(Collider other)
+    {
+        if (Input.GetKeyDown(interactKey))
+        {
+            var playerIdentity = other.GetComponent<NetworkIdentity>();
+            if (playerIdentity)
+            {
+                TryGiveQuest(playerIdentity);
+            }
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        var inventory = other.GetComponent<PlayerInventory>();
+        if (inventory && inventory.isLocalPlayer)
+        {
+            ShowInteractionPrompt(true);
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        ShowInteractionPrompt(false);
+    }
+    
+    private void ShowInteractionPrompt(bool show)
+    {
+        if (visualIndicator)
+            visualIndicator.SetActive(show);
+            
+        if (show)
+        {
+            UIManager.Instance?.UpdateInteractText($"Нажмите {interactKey} чтобы взять квест у {zoneName}");
+        }
+        else
+        {
+            UIManager.Instance?.UpdateInteractText(string.Empty);
+        }
+    }
+    
+    [Server]
+    private void TryGiveQuest(NetworkIdentity playerIdentity)
+    {
+        if (availableQuests == null || availableQuests.Length == 0) return;
+    
+        if (playerIdentity == null)
+        {
+            Debug.LogWarning("Player has no NetworkIdentity");
+            return;
+        }
+    
+        // Выбираем случайный квест
+        Quest questToGive = availableQuests[Random.Range(0, availableQuests.Length)];
+    
+        if (QuestManager.Instance && QuestManager.Instance.TryGiveQuest(playerIdentity, questToGive))
+        {
+            Debug.Log($"Quest given to player {playerIdentity.netId}: {questToGive.questName}");
+        }
+        else
+        {
+            Debug.Log($"Failed to give quest to player {playerIdentity.netId}");
+        }
+    }
+}
