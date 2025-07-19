@@ -6,8 +6,6 @@ public class ShadowHealth : PlayerHealth
 {
     [SerializeField] private float invisibilityDuration = 5f;
     
-    [SyncVar]
-    private bool isInvisible = false;
     private MeshRenderer meshRenderer;
     private Material originalMaterial;
     private Material invisibleMaterial;
@@ -36,7 +34,6 @@ public class ShadowHealth : PlayerHealth
     [Server]
     private void ActivateInvisibility()
     {
-        isInvisible = true;
         RpcHideShadow();
         Invoke(nameof(DeactivateInvisibility), invisibilityDuration);
     }
@@ -44,7 +41,6 @@ public class ShadowHealth : PlayerHealth
     [Server]
     private void DeactivateInvisibility()
     {
-        isInvisible = false;
         RpcShowShadow();
     }
     

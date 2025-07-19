@@ -32,7 +32,7 @@ public class QuestManager : NetworkBehaviour
     public override void OnStartServer()
     {
         // Находим все точки назначения квестов на сцене
-        questDestinations.AddRange(FindObjectsOfType<QuestDestination>());
+        questDestinations.AddRange(FindObjectsByType<QuestDestination>(FindObjectsSortMode.None));
         Debug.Log($"Found {questDestinations.Count} quest destinations");
     }
     

@@ -25,7 +25,7 @@ public class AngelController : MonoBehaviour
     private void Start()
     {
         _autoAimSystem = GetComponent<AutoAimSystem>();
-        _freeLookCam = FindObjectsOfType<CinemachineCamera>();
+        _freeLookCam = FindObjectsByType<CinemachineCamera>(FindObjectsSortMode.None);
         _freeLookCam = _freeLookCam
             .OrderByDescending(cam => cam.Priority.Value)
             .ToArray();
