@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Mirror;
 using UnityEngine;
 
@@ -7,7 +8,7 @@ public class QuestManager : NetworkBehaviour
     public static QuestManager Instance;
     
     [SyncVar(hook = nameof(OnActiveQuestsChanged))]
-    private string activeQuestsData = "";
+    private string _activeQuestsData = "";
     
     private Dictionary<uint, List<Quest>> playerQuests = new Dictionary<uint, List<Quest>>();
     private Dictionary<uint, HashSet<string>> completedQuests = new Dictionary<uint, HashSet<string>>();
@@ -33,80 +34,6 @@ public class QuestManager : NetworkBehaviour
         // Находим все точки назначения квестов на сцене
         questDestinations.AddRange(FindObjectsOfType<QuestDestination>());
         Debug.Log($"Found {questDestinations.Count} quest destinations");
-    }
-    
-    [Server]
-    public bool TryGiveQuest(NetworkIdentity playerIdentity, Quest quest)
-    {
-        if (playerIdentity == null || playerIdentity.connectionToClient == null)
-        {
-            Debug.LogWarning("Player identity or connection is null");
-            return false;
-        }
-        
-        uint playerId = playerIdentity.netId;
-        
-        // Инициализируем структуры данных для игрока
-        if (!playerQuests.ContainsKey(playerId))
-            playerQuests[playerId] = new List<Quest>();
-        if (!completedQuests.ContainsKey(playerId))
-            completedQuests[playerId] = new HashSet<string>();
-        if (!questCooldowns.ContainsKey(playerId))
-            questCooldowns[playerId] = new Dictionary<string, float>();
-        
-        // Проверяем, нет ли уже активного такого квеста
-        if (playerQuests[playerId].Exists(q => q.questId == quest.questId))
-        {
-            Debug.Log($"Player already has quest: {quest.questName}");
-            return false;
-        }
-        
-        // Проверяем, был ли квест уже выполнен
-        if (completedQuests[playerId].Contains(quest.questId))
-        {
-            // Если квест не повторяющийся, не даем его снова
-            if (!quest.isRepeatable)
-            {
-                Debug.Log($"Quest {quest.questName} already completed and not repeatable");
-                return false;
-            }
-            
-            // Проверяем кулдаун для повторяющегося квеста
-            if (questCooldowns[playerId].ContainsKey(quest.questId))
-            {
-                float cooldownEnd = questCooldowns[playerId][quest.questId];
-                if (Time.time < cooldownEnd)
-                {
-                    float remainingTime = cooldownEnd - Time.time;
-                    Debug.Log($"Quest {quest.questName} on cooldown for {remainingTime:F1} seconds");
-                    
-                    // Уведомляем игрока о кулдауне
-                    TargetQuestOnCooldown(playerIdentity.connectionToClient, quest.questName, remainingTime);
-                    return false;
-                }
-            }
-        }
-        
-        // Создаем копию квеста для игрока
-        Quest playerQuest = new Quest(
-            quest.questId,
-            quest.questName,
-            quest.description,
-            quest.reward,
-            Vector3.zero, // Позиция будет найдена через destinationName
-            quest.destinationName,
-            quest.isRepeatable,
-            quest.repeatCooldown
-        );
-        
-        playerQuests[playerId].Add(playerQuest);
-        SyncQuestData(playerIdentity);
-        
-        // Уведомляем клиента о новом квесте
-        TargetQuestAccepted(playerIdentity.connectionToClient, playerQuest);
-        
-        Debug.Log($"Quest '{playerQuest.questName}' given to player {playerId}");
-        return true;
     }
     
     [Server]
@@ -187,7 +114,7 @@ public class QuestManager : NetworkBehaviour
     [TargetRpc]
     private void TargetSyncQuests(NetworkConnection target, string questData)
     {
-        activeQuestsData = questData;
+        _activeQuestsData = questData;
     }
     
     [TargetRpc]
@@ -267,5 +194,132 @@ public class QuestManager : NetworkBehaviour
     public HashSet<string> GetCompletedQuests(uint playerId)
     {
         return completedQuests.TryGetValue(playerId, out var quest) ? new HashSet<string>(quest) : new HashSet<string>();
+    }
+    
+    // Add these methods to your existing QuestManager class:
+
+    [Server]
+    public void RemoveQuestFromPlayer(NetworkIdentity playerIdentity, string questId)
+    {
+        if (playerIdentity == null) return;
+        
+        uint playerId = playerIdentity.netId;
+        if (!playerQuests.ContainsKey(playerId)) return;
+        
+        var quest = playerQuests[playerId].FirstOrDefault(q => q.questId == questId);
+        if (quest != null)
+        {
+            playerQuests[playerId].Remove(quest);
+            SyncQuestData(playerIdentity);
+            
+            TargetQuestRemoved(playerIdentity.connectionToClient, quest.questName);
+            Debug.Log($"Quest '{quest.questName}' removed from player {playerId}");
+        }
+    }
+
+    [TargetRpc]
+    private void TargetQuestRemoved(NetworkConnection target, string questName)
+    {
+        UIManager.Instance?.ShowNotification($"Квест отменен: {questName}");
+    }
+
+    // Update the TryGiveQuest method to work better with PlayerQuest
+    [Server]
+    public bool TryGiveQuest(NetworkIdentity playerIdentity, Quest quest)
+    {
+        if (playerIdentity == null || playerIdentity.connectionToClient == null)
+        {
+            Debug.LogWarning("Player identity or connection is null");
+            return false;
+        }
+        
+        uint playerId = playerIdentity.netId;
+        
+        // Get PlayerQuest component to check quest limits
+        var playerQuestComponent = playerIdentity.GetComponent<PlayerQuest>();
+        if (playerQuestComponent != null && !playerQuestComponent.CanAcceptNewQuest())
+        {
+            TargetQuestLimitReached(playerIdentity.connectionToClient);
+            return false;
+        }
+        
+        // Initialize data structures for player
+        if (!playerQuests.ContainsKey(playerId))
+            playerQuests[playerId] = new List<Quest>();
+        if (!completedQuests.ContainsKey(playerId))
+            completedQuests[playerId] = new HashSet<string>();
+        if (!questCooldowns.ContainsKey(playerId))
+            questCooldowns[playerId] = new Dictionary<string, float>();
+        
+        // Check if player already has this quest
+        if (playerQuests[playerId].Exists(q => q.questId == quest.questId))
+        {
+            Debug.Log($"Player already has quest: {quest.questName}");
+            TargetQuestAlreadyActive(playerIdentity.connectionToClient, quest.questName);
+            return false;
+        }
+        
+        // Check if quest was already completed
+        if (completedQuests[playerId].Contains(quest.questId))
+        {
+            if (!quest.isRepeatable)
+            {
+                Debug.Log($"Quest {quest.questName} already completed and not repeatable");
+                TargetQuestAlreadyCompleted(playerIdentity.connectionToClient, quest.questName);
+                return false;
+            }
+            
+            // Check cooldown for repeatable quest
+            if (questCooldowns[playerId].ContainsKey(quest.questId))
+            {
+                float cooldownEnd = questCooldowns[playerId][quest.questId];
+                if (Time.time < cooldownEnd)
+                {
+                    float remainingTime = cooldownEnd - Time.time;
+                    Debug.Log($"Quest {quest.questName} on cooldown for {remainingTime:F1} seconds");
+                    TargetQuestOnCooldown(playerIdentity.connectionToClient, quest.questName, remainingTime);
+                    return false;
+                }
+            }
+        }
+        
+        // Create quest copy for player
+        Quest playerQuest = new Quest(
+            quest.questId,
+            quest.questName,
+            quest.description,
+            quest.reward,
+            Vector3.zero,
+            quest.destinationName,
+            quest.isRepeatable,
+            quest.repeatCooldown
+        );
+        
+        playerQuests[playerId].Add(playerQuest);
+        SyncQuestData(playerIdentity);
+        
+        // Notify client about new quest
+        TargetQuestAccepted(playerIdentity.connectionToClient, playerQuest);
+        
+        Debug.Log($"Quest '{playerQuest.questName}' given to player {playerId}");
+        return true;
+    }
+
+    [TargetRpc]
+    private void TargetQuestLimitReached(NetworkConnection target)
+    {
+        UIManager.Instance?.ShowNotification("Вы уже взяли максимальное количество квестов!");
+    }
+
+    [TargetRpc]
+    private void TargetQuestAlreadyActive(NetworkConnection target, string questName)
+    {
+        UIManager.Instance?.ShowNotification($"У вас уже есть активный квест: {questName}");
+    }
+
+    [TargetRpc]
+    private void TargetQuestAlreadyCompleted(NetworkConnection target, string questName)
+    {
+        UIManager.Instance?.ShowNotification($"Квест '{questName}' уже выполнен и не может быть повторен");
     }
 }

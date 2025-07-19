@@ -769,6 +769,7 @@ GameObject:
   - component: {fileID: 5075816131342946485}
   - component: {fileID: 1395359251054008825}
   - component: {fileID: 7230295268493608126}
+  - component: {fileID: 6212345802781654572}
   m_Layer: 3
   m_Name: Neo
   m_TagString: Player
@@ -1069,7 +1070,6 @@ MonoBehaviour:
   cooldown: 1.5
   gunTransform: {fileID: 5548219211156043638}
   maxBulletAmount: 6
-  reloadInterval: 999
   bulletAmount: 1
 --- !u!114 &1395359251054008825
 MonoBehaviour:
@@ -1114,11 +1114,23 @@ MonoBehaviour:
   shield: {fileID: 3667646855322776087}
   shieldRechargeTime: 10
   shieldDuration: 2
-  teleportRadius: 0.5
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 1
   neoAbilityIcon: {fileID: 21300000, guid: 223ca1f3716ea384c949a11e90f14e2b, type: 3}
+--- !u!114 &6212345802781654572
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0af53ef60fceacb4da3d8071bb38a5c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  maxActiveQuests: 5
 --- !u!1 &6295896651892436282
 GameObject:
   m_ObjectHideFlags: 0

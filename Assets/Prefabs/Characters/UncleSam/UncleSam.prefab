@@ -650,6 +650,7 @@ GameObject:
   - component: {fileID: 5075816131342946485}
   - component: {fileID: 1395359251054008825}
   - component: {fileID: 5131815614427623843}
+  - component: {fileID: 8586553508577481841}
   m_Layer: 3
   m_Name: UncleSam
   m_TagString: Player
@@ -991,8 +992,22 @@ MonoBehaviour:
   moneyTakeInterval: 8
   cashbackChance: 0.5
   cashbackMoney: 1
-  audioSource: {fileID: 0}
-  cashbackClip: {fileID: 0}
+--- !u!114 &8586553508577481841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0af53ef60fceacb4da3d8071bb38a5c6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  maxActiveQuests: 5
 --- !u!1 &7472770470738815705
 GameObject:
   m_ObjectHideFlags: 0

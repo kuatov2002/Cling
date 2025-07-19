@@ -19,7 +19,6 @@ public class QuestZone : NetworkBehaviour
         if (visualIndicator)
             visualIndicator.SetActive(false);
             
-        // Генерируем квесты из шаблонов
         GenerateQuestsFromTemplates();
     }
     
@@ -51,22 +50,19 @@ public class QuestZone : NetworkBehaviour
     
     private QuestDestination FindDestinationByName(string name)
     {
-        // Ищем все объекты типа QuestDestination без лишней сортировки
         var destinations = FindObjectsByType<QuestDestination>(FindObjectsSortMode.None);
-        
-        // Быстрый поиск по имени
         return destinations.FirstOrDefault(dest => dest.destinationName == name);
     }
     
-
     private void OnTriggerStay(Collider other)
     {
-        if (Input.GetKeyDown(interactKey))
+        var playerIdentity = other.GetComponent<NetworkIdentity>();
+        if (playerIdentity && playerIdentity.isLocalPlayer && Input.GetKeyDown(interactKey))
         {
-            var playerIdentity = other.GetComponent<NetworkIdentity>();
-            if (playerIdentity)
+            var playerInput = playerIdentity.GetComponent<PlayerQuest>();
+            if (playerInput)
             {
-                TryGiveQuest(playerIdentity);
+                playerInput.CmdInteractWithQuestZone(netId);
             }
         }
     }
@@ -82,26 +78,25 @@ public class QuestZone : NetworkBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        ShowInteractionPrompt(false);
+        var inventory = other.GetComponent<PlayerInventory>();
+        if (inventory && inventory.isLocalPlayer)
+        {
+            ShowInteractionPrompt(false);
+        }
     }
     
     private void ShowInteractionPrompt(bool show)
     {
         if (visualIndicator)
             visualIndicator.SetActive(show);
-            
-        if (show)
-        {
-            UIManager.Instance?.UpdateInteractText($"Нажмите {interactKey} чтобы взять квест у {zoneName}");
-        }
-        else
-        {
-            UIManager.Instance?.UpdateInteractText(string.Empty);
-        }
+
+        UIManager.Instance?.UpdateInteractText(show
+            ? $"Нажмите {interactKey} чтобы взять квест у {zoneName}"
+            : string.Empty);
     }
     
     [Server]
-    private void TryGiveQuest(NetworkIdentity playerIdentity)
+    public void TryGiveQuest(NetworkIdentity playerIdentity)
     {
         if (availableQuests == null || availableQuests.Length == 0) return;
     
@@ -111,7 +106,6 @@ public class QuestZone : NetworkBehaviour
             return;
         }
     
-        // Выбираем случайный квест
         Quest questToGive = availableQuests[Random.Range(0, availableQuests.Length)];
     
         if (QuestManager.Instance && QuestManager.Instance.TryGiveQuest(playerIdentity, questToGive))
