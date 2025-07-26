@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Mirror;
+using Quests;
 using UnityEngine;
 
 public class PlayerQuest : NetworkBehaviour
@@ -32,7 +33,7 @@ public class PlayerQuest : NetworkBehaviour
             CacheQuestDestinations();
         }
     }
-    
+
     public override void OnStopClient()
     {
         if (isLocalPlayer && QuestManager.Instance != null)
@@ -100,23 +101,6 @@ public class PlayerQuest : NetworkBehaviour
         }
     }
     
-    [Command]
-    public void CmdRequestQuestStatus(string questId)
-    {
-        var quest = _activeQuests.FirstOrDefault(q => q.questId == questId);
-        if (quest != null)
-        {
-            // Можно добавить логику для проверки прогресса квеста
-            float distanceToDestination = 0f;
-            if (_questDestinations.TryGetValue(quest.destinationName, out var destination))
-            {
-                distanceToDestination = Vector3.Distance(transform.position, destination.transform.position);
-            }
-            
-            TargetQuestStatusUpdate(connectionToClient, questId, distanceToDestination);
-        }
-    }
-    
     private void HandleQuestAccepted(Quest quest)
     {
         if (!isLocalPlayer) return;
@@ -158,8 +142,14 @@ public class PlayerQuest : NetworkBehaviour
             string destinationName = kvp.Key;
             QuestDestination destination = kvp.Value;
             
-            bool hasActiveQuest = _activeQuests.Any(q => q.destinationName == destinationName && !q.isCompleted);
-            destination.UpdateMarkerVisibility(hasActiveQuest);
+            // ИЗМЕНЕНО: Проверяем, является ли destinationName целью ТЕКУЩЕЙ задачи
+            bool hasActiveQuestForThisDest = _activeQuests.Any(q => 
+                !q.isCompleted && 
+                q.GetCurrentObjective() != null && 
+                q.GetCurrentObjective().destinationName == destinationName
+            );
+            
+            destination.UpdateMarkerVisibility(hasActiveQuestForThisDest);
         }
     }
     
@@ -197,7 +187,9 @@ public class PlayerQuest : NetworkBehaviour
     public float GetDistanceToQuestDestination(string questId)
     {
         var quest = GetQuestById(questId);
-        if (quest != null && _questDestinations.TryGetValue(quest.destinationName, out var destination))
+        var currentObjective = quest?.GetCurrentObjective();
+        
+        if (currentObjective != null && _questDestinations.TryGetValue(currentObjective.destinationName, out var destination))
         {
             return Vector3.Distance(transform.position, destination.transform.position);
         }
@@ -209,7 +201,9 @@ public class PlayerQuest : NetworkBehaviour
     public Vector3 GetDirectionToQuestDestination(string questId)
     {
         var quest = GetQuestById(questId);
-        if (quest != null && _questDestinations.TryGetValue(quest.destinationName, out var destination))
+        var currentObjective = quest?.GetCurrentObjective();
+
+        if (currentObjective != null && _questDestinations.TryGetValue(currentObjective.destinationName, out var destination))
         {
             return (destination.transform.position - transform.position).normalized;
         }
@@ -221,11 +215,13 @@ public class PlayerQuest : NetworkBehaviour
     {
         if (!Application.isPlaying || !isLocalPlayer) return;
         
-        // Рисуем линии к активным quest destinations в Scene view
         Gizmos.color = Color.yellow;
         foreach (var quest in _activeQuests)
         {
-            if (_questDestinations.TryGetValue(quest.destinationName, out var destination))
+            if (quest.isCompleted) continue;
+
+            var currentObjective = quest.GetCurrentObjective();
+            if (currentObjective != null && _questDestinations.TryGetValue(currentObjective.destinationName, out var destination))
             {
                 Gizmos.DrawLine(transform.position, destination.transform.position);
                 Gizmos.DrawWireSphere(destination.transform.position, 2f);

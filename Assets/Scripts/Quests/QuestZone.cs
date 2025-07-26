@@ -3,118 +3,100 @@ using Mirror;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class QuestZone : NetworkBehaviour
+namespace Quests
 {
-    [Header("Quest Zone Configuration")]
-    [SerializeField] private string zoneName = "Quest Giver";
-    [SerializeField] private Quest[] availableQuests;
-    [SerializeField] private KeyCode interactKey = KeyCode.E;
-    [SerializeField] private GameObject visualIndicator;
-    
-    [Header("Quest Templates")]
-    [SerializeField] private QuestTemplate[] questTemplates;
-    
-    private void Start()
+    public class QuestZone : NetworkBehaviour
     {
-        if (visualIndicator)
-            visualIndicator.SetActive(false);
-            
-        GenerateQuestsFromTemplates();
-    }
+        [Header("Quest Zone Configuration")]
+        [SerializeField] private string zoneName = "Quest Giver";
+        [SerializeField] private Quest[] availableQuests;
+        [SerializeField] private KeyCode interactKey = KeyCode.E;
+        [SerializeField] private GameObject visualIndicator;
     
-    private void GenerateQuestsFromTemplates()
-    {
-        if (questTemplates == null || questTemplates.Length == 0) return;
-        
-        availableQuests = new Quest[questTemplates.Length];
-        for (int i = 0; i < questTemplates.Length; i++)
+        [Header("Quest Templates")]
+        [SerializeField] private QuestTemplate[] questTemplates;
+    
+        private void Start()
         {
-            var template = questTemplates[i];
-            var destination = FindDestinationByName(template.destinationName);
+            if (visualIndicator)
+                visualIndicator.SetActive(false);
             
-            if (destination != null)
+            GenerateQuestsFromTemplates();
+        }
+    
+        private void GenerateQuestsFromTemplates()
+        {
+            if (questTemplates == null || questTemplates.Length == 0) return;
+
+            availableQuests = new Quest[questTemplates.Length];
+            for (int i = 0; i < questTemplates.Length; i++)
             {
-                availableQuests[i] = new Quest(
-                    template.questId,
-                    template.questName,
-                    template.description,
-                    template.reward,
-                    destination.transform.position,
-                    template.destinationName,
-                    template.isRepeatable,
-                    template.repeatCooldown
-                );
+                availableQuests[i] = questTemplates[i].CreateQuest();
             }
         }
-    }
     
-    private QuestDestination FindDestinationByName(string name)
-    {
-        var destinations = FindObjectsByType<QuestDestination>(FindObjectsSortMode.None);
-        return destinations.FirstOrDefault(dest => dest.destinationName == name);
-    }
-    
-    private void OnTriggerStay(Collider other)
-    {
-        var playerIdentity = other.GetComponent<NetworkIdentity>();
-        if (playerIdentity && playerIdentity.isLocalPlayer && Input.GetKeyDown(interactKey))
+        private void OnTriggerStay(Collider other)
         {
-            var playerInput = playerIdentity.GetComponent<PlayerQuest>();
-            if (playerInput)
+            var playerIdentity = other.GetComponent<NetworkIdentity>();
+            if (playerIdentity && playerIdentity.isLocalPlayer && Input.GetKeyDown(interactKey))
             {
-                playerInput.CmdInteractWithQuestZone(netId);
+                var playerInput = playerIdentity.GetComponent<PlayerQuest>();
+                if (playerInput)
+                {
+                    playerInput.CmdInteractWithQuestZone(netId);
+                }
             }
         }
-    }
 
-    private void OnTriggerEnter(Collider other)
-    {
-        var inventory = other.GetComponent<PlayerInventory>();
-        if (inventory && inventory.isLocalPlayer)
+        private void OnTriggerEnter(Collider other)
         {
-            ShowInteractionPrompt(true);
+            var inventory = other.GetComponent<PlayerInventory>();
+            if (inventory && inventory.isLocalPlayer)
+            {
+                ShowInteractionPrompt(true);
+            }
         }
-    }
 
-    private void OnTriggerExit(Collider other)
-    {
-        var inventory = other.GetComponent<PlayerInventory>();
-        if (inventory && inventory.isLocalPlayer)
+        private void OnTriggerExit(Collider other)
         {
-            ShowInteractionPrompt(false);
+            var inventory = other.GetComponent<PlayerInventory>();
+            if (inventory && inventory.isLocalPlayer)
+            {
+                ShowInteractionPrompt(false);
+            }
         }
-    }
     
-    private void ShowInteractionPrompt(bool show)
-    {
-        if (visualIndicator)
-            visualIndicator.SetActive(show);
+        private void ShowInteractionPrompt(bool show)
+        {
+            if (visualIndicator)
+                visualIndicator.SetActive(show);
 
-        UIManager.Instance?.UpdateInteractText(show
-            ? $"Нажмите {interactKey} чтобы взять квест у {zoneName}"
-            : string.Empty);
-    }
-    
-    [Server]
-    public void TryGiveQuest(NetworkIdentity playerIdentity)
-    {
-        if (availableQuests == null || availableQuests.Length == 0) return;
-    
-        if (playerIdentity == null)
-        {
-            Debug.LogWarning("Player has no NetworkIdentity");
-            return;
+            UIManager.Instance?.UpdateInteractText(show
+                ? $"Нажмите {interactKey} чтобы взять квест у {zoneName}"
+                : string.Empty);
         }
     
-        Quest questToGive = availableQuests[Random.Range(0, availableQuests.Length)];
+        [Server]
+        public void TryGiveQuest(NetworkIdentity playerIdentity)
+        {
+            if (availableQuests == null || availableQuests.Length == 0) return;
     
-        if (QuestManager.Instance && QuestManager.Instance.TryGiveQuest(playerIdentity, questToGive))
-        {
-            Debug.Log($"Quest given to player {playerIdentity.netId}: {questToGive.questName}");
-        }
-        else
-        {
-            Debug.Log($"Failed to give quest to player {playerIdentity.netId}");
+            if (playerIdentity == null)
+            {
+                Debug.LogWarning("Player has no NetworkIdentity");
+                return;
+            }
+    
+            Quest questToGive = availableQuests[Random.Range(0, availableQuests.Length)];
+    
+            if (QuestManager.Instance && QuestManager.Instance.TryGiveQuest(playerIdentity, questToGive))
+            {
+                Debug.Log($"Quest given to player {playerIdentity.netId}: {questToGive.questName}");
+            }
+            else
+            {
+                Debug.Log($"Failed to give quest to player {playerIdentity.netId}");
+            }
         }
     }
 }
