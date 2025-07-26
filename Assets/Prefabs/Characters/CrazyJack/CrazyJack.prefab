@@ -891,7 +891,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  inventorySlots:
+  inventorySlotsTemplate:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
@@ -900,7 +900,6 @@ MonoBehaviour:
   activeItemIndex: 0
   hotkeys: 3100000032000000330000003400000035000000
   useItemKey: 101
-  moneyTakeInterval: 10
 --- !u!114 &2851042032946622653
 MonoBehaviour:
   m_ObjectHideFlags: 0

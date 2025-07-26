@@ -891,16 +891,15 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  inventorySlots:
-  - {fileID: 2429352268839800045, guid: 5f94949064905a44085b6de451119d98, type: 3}
+  inventorySlotsTemplate:
   - {fileID: 8001623815023853232, guid: 3e4db753ebe0891448700f23db36eac3, type: 3}
+  - {fileID: 2429352268839800045, guid: 5f94949064905a44085b6de451119d98, type: 3}
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
   activeItemIndex: 0
   hotkeys: 3100000032000000330000003400000035000000
   useItemKey: 101
-  moneyTakeInterval: 10
 --- !u!114 &2851042032946622653
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1002,6 +1001,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0af53ef60fceacb4da3d8071bb38a5c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  maxActiveQuests: 5
 --- !u!1 &7472770470738815705
 GameObject:
   m_ObjectHideFlags: 0
