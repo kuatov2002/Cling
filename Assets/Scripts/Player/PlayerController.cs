@@ -15,7 +15,6 @@ public class PlayerMovement : NetworkBehaviour
     [SerializeField] private Gun gun;
     
     [SerializeField] private Animator animator;
-    private Transform geometry;
     
     private AutoAimSystem _autoAimSystem;
     private CharacterController _controller;
@@ -25,12 +24,10 @@ public class PlayerMovement : NetworkBehaviour
     private Vector2 _look;
     private bool _isAiming = false;
     private static readonly int Speed = Animator.StringToHash("Speed");
-
+    private Vector2 _smoothInput;
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
-
-        geometry = animator.transform;
     }
 
     public override void OnStartLocalPlayer()
@@ -134,30 +131,43 @@ public class PlayerMovement : NetworkBehaviour
     }
 
     private float _animatorSpeed;
+    private float _animatorStrafe;
     private static readonly int IsAiming = Animator.StringToHash("IsAiming");
+    private static readonly int Strafe = Animator.StringToHash("Strafe");
 
     private void HandleMovement()
     {
+        // Получаем "сырой" ввод
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
-        Vector3 inputVector = new Vector3(horizontal, 0f, vertical).normalized;
+        Vector2 rawInput = new Vector2(horizontal, vertical);
 
+        // Плавно интерполируем реальный ввод
+        _smoothInput = Vector2.Lerp(_smoothInput, rawInput, Time.deltaTime * 5f);
+
+        // Нормализуем, чтобы сохранить круглую зону движения (не ромб)
+        Vector2 inputVector = _smoothInput;
+        if (inputVector.magnitude > 1f)
+            inputVector.Normalize();
+
+        // Вычисляем направление движения
         Vector3 moveDirection = Vector3.zero;
         if (inputVector.magnitude > 0.01f)
         {
-            moveDirection = transform.TransformDirection(inputVector) * moveSpeed;
-
-            // 🔥 Поворачиваем геометрию в сторону движения
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-            // Оставляем только Y-вращение, чтобы не наклонялась геометрия
-            targetRotation = Quaternion.Euler(0, targetRotation.eulerAngles.y, 0);
-            geometry.rotation = Quaternion.Slerp(geometry.rotation, targetRotation, Time.deltaTime * 10f); // Плавный поворот
+            moveDirection = transform.TransformDirection(new Vector3(inputVector.x, 0f, inputVector.y)) * moveSpeed;
         }
 
-        float targetSpeed = moveDirection.magnitude;
-        _animatorSpeed = Mathf.Lerp(_animatorSpeed, targetSpeed, Time.deltaTime * 10f);
+        // Плавное изменение Speed для аниматора
+        float targetSpeed = inputVector.y * moveSpeed;
+        _animatorSpeed = Mathf.Lerp(_animatorSpeed, targetSpeed, Time.deltaTime * 5f);
         animator?.SetFloat(Speed, _animatorSpeed);
 
+        // Плавное изменение Strafe для аниматора
+        float targetStrafe = inputVector.x * moveSpeed;
+        _animatorStrafe = Mathf.Lerp(_animatorStrafe, targetStrafe, Time.deltaTime * 5f);
+        animator?.SetFloat(Strafe, _animatorStrafe);
+
+        // Гравитация и движение
         _velocity.y += gravity * Time.deltaTime;
         Vector3 finalMovement = moveDirection + Vector3.up * _velocity.y;
         _controller.Move(finalMovement * Time.deltaTime);
