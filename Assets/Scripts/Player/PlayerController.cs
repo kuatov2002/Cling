@@ -8,15 +8,14 @@ public class PlayerMovement : NetworkBehaviour
 {
     [Header("Настройки движения")]
     [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private float jumpHeight = 2f;
     [SerializeField] private float gravity = -9.81f;
-    [SerializeField] private LayerMask groundLayer;
     [SerializeField] private Transform followTarget;
-    [SerializeField] private Transform groundCheck;
-    [SerializeField] private float groundDistance = 0.4f;
     
     [Header("Камера FreeLook")]
     [SerializeField] private Gun gun;
+    
+    [SerializeField] private Animator animator;
+    private Transform geometry;
     
     private AutoAimSystem _autoAimSystem;
     private CharacterController _controller;
@@ -25,10 +24,13 @@ public class PlayerMovement : NetworkBehaviour
     private CinemachineCamera[] _freeLookCam;
     private Vector2 _look;
     private bool _isAiming = false;
-    
+    private static readonly int Speed = Animator.StringToHash("Speed");
+
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
+
+        geometry = animator.transform;
     }
 
     public override void OnStartLocalPlayer()
@@ -54,30 +56,9 @@ public class PlayerMovement : NetworkBehaviour
     private void Update()
     {
         if (!isLocalPlayer) return;
-
-        HandleGroundCheck();
-        HandleJump();
         HandleShooting();
         HandleMouseLook();
         HandleMovement();
-    }
-
-    private void HandleGroundCheck()
-    {
-        _isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundLayer);
-
-        if (_isGrounded && _velocity.y < 0)
-        {
-            _velocity.y = -2f;
-        }
-    }
-
-    private void HandleJump()
-    {
-        if (Input.GetButtonDown("Jump") && _isGrounded)
-        {
-            _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
     }
 
     private void HandleShooting()
@@ -87,7 +68,8 @@ public class PlayerMovement : NetworkBehaviour
             if (gun.Charge())
             {
                 _isAiming = true;
-                _freeLookCam[0].gameObject.SetActive(false);
+                animator?.SetBool(IsAiming, true);
+                //_freeLookCam[0].gameObject.SetActive(false);
             }
         }
 
@@ -96,7 +78,8 @@ public class PlayerMovement : NetworkBehaviour
             if (gun.Fire())
             {
                 _isAiming = false;
-                _freeLookCam[0].gameObject.SetActive(true);
+                animator?.SetBool(IsAiming, false);
+                //_freeLookCam[0].gameObject.SetActive(true);
             }
         }
 
@@ -105,7 +88,8 @@ public class PlayerMovement : NetworkBehaviour
         {
             gun.CancelCharge();
             _isAiming = false;
-            _freeLookCam[0].gameObject.SetActive(true);
+            animator?.SetBool(IsAiming, false);
+            //_freeLookCam[0].gameObject.SetActive(true);
         }
     }
 
@@ -149,6 +133,9 @@ public class PlayerMovement : NetworkBehaviour
         followTarget.localEulerAngles = new Vector3(angles.x, 0, 0);
     }
 
+    private float _animatorSpeed;
+    private static readonly int IsAiming = Animator.StringToHash("IsAiming");
+
     private void HandleMovement()
     {
         float horizontal = Input.GetAxisRaw("Horizontal");
@@ -159,7 +146,17 @@ public class PlayerMovement : NetworkBehaviour
         if (inputVector.magnitude > 0.01f)
         {
             moveDirection = transform.TransformDirection(inputVector) * moveSpeed;
+
+            // 🔥 Поворачиваем геометрию в сторону движения
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+            // Оставляем только Y-вращение, чтобы не наклонялась геометрия
+            targetRotation = Quaternion.Euler(0, targetRotation.eulerAngles.y, 0);
+            geometry.rotation = Quaternion.Slerp(geometry.rotation, targetRotation, Time.deltaTime * 10f); // Плавный поворот
         }
+
+        float targetSpeed = moveDirection.magnitude;
+        _animatorSpeed = Mathf.Lerp(_animatorSpeed, targetSpeed, Time.deltaTime * 10f);
+        animator?.SetFloat(Speed, _animatorSpeed);
 
         _velocity.y += gravity * Time.deltaTime;
         Vector3 finalMovement = moveDirection + Vector3.up * _velocity.y;
