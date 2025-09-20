@@ -19,9 +19,10 @@ public class NetworkGameEvents : NetworkBehaviour
     [Server]
     public override void OnStartServer()
     {
-        // Объект уже спавнится через NetworkServer.Spawn(), не нужно повторно
-        Debug.Log("Server: GameEvents started");
+        Debug.Log("Server: NetworkGameEvents started");
     }
+
+    // === RPC для клиентов ===
 
     [ClientRpc]
     public void RpcRolesAssigned()
@@ -40,13 +41,5 @@ public class NetworkGameEvents : NetworkBehaviour
     {
         Debug.Log($"{winningTeam} have won the game!");
         UIManager.Instance?.GameoverWithRoles($"{winningTeam} have won the game!", playerRoles);
-    }
-    
-    [ClientRpc]
-    public void RpcSceneLoaded() 
-    {
-        // Вызывается на клиентах после загрузки сцены
-        Debug.Log("Scene loaded on client");
-        GameManager.Instance?.OnClientSceneLoaded();
     }
 }

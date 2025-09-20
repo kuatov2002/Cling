@@ -43,9 +43,9 @@ public class Bullet : NetworkBehaviour
                 if (target != null)
                 {
                     // Создаем эффект локально на сервере (для хоста)
-                    PlayHitEffectLocal(hit.point, hit.normal);
+                    PlayHitEffectLocal(hit.point);
                     // Отправляем RPC клиентам
-                    RpcPlayHitEffect(hit.point, hit.normal);
+                    RpcPlayHitEffect(hit.point);
                     ApplyDamage(target);
                 }
 
@@ -57,20 +57,20 @@ public class Bullet : NetworkBehaviour
     }
 
     [Server]
-    void PlayHitEffectLocal(Vector3 hitPoint, Vector3 hitNormal)
+    void PlayHitEffectLocal(Vector3 hitPoint)
     {
         if (hitEffectPrefab)
         {
-            Instantiate(hitEffectPrefab, hitPoint, Quaternion.LookRotation(hitNormal));
+            Instantiate(hitEffectPrefab, hitPoint, Quaternion.identity);
         }
     }
 
     [ClientRpc]
-    protected void RpcPlayHitEffect(Vector3 hitPoint, Vector3 hitNormal)
+    protected void RpcPlayHitEffect(Vector3 hitPoint)
     {
         if (hitEffectPrefab)
         {
-            Instantiate(hitEffectPrefab, hitPoint, Quaternion.LookRotation(hitNormal));
+            Instantiate(hitEffectPrefab, hitPoint, Quaternion.identity);
         }
     }
 

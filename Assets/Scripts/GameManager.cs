@@ -1,10 +1,10 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Mirror;
 using UnityEngine;
-using Random = UnityEngine.Random;
 
-public class GameManager : MonoBehaviour
+public class GameManager : NetworkBehaviour // <-- Важно: NetworkBehaviour!
 {
     public static GameManager Instance;
 
@@ -14,14 +14,14 @@ public class GameManager : MonoBehaviour
     // Player Management
     private readonly List<PlayerState> _players = new();
     private readonly List<PlayerRole> _playerRoles = new();
-    private readonly Dictionary<NetworkConnection, int> _playerStableIndices = new();
+    private readonly Dictionary<NetworkConnectionToClient, int> _playerStableIndices = new();
     private int _nextPlayerIndex = 0;
 
     // Game State
     private GameState _currentGameState = GameState.Waiting;
     private bool _gameInProgress = false;
+    private bool _gameInitialized = false; // Защита от повторной инициализации
 
-    
     private int _clientsSceneLoadedCount = 0;
 
     public enum GameState
@@ -38,7 +38,7 @@ public class GameManager : MonoBehaviour
     {
         InitializeSingleton();
         Debug.Log("GameManager Awake");
-        
+
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 1;
     }
@@ -75,7 +75,6 @@ public class GameManager : MonoBehaviour
         RoomManager.ClientStopped += OnNetworkStopped;
         RoomManager.GameStarted += OnGameStarted;
         RoomManager.PlayerDisconnected += OnPlayerDisconnected;
-        NetworkClient.RegisterHandler<SceneLoadedMessage>(OnSceneLoadedMessage);
     }
 
     private void UnsubscribeFromNetworkEvents()
@@ -84,7 +83,6 @@ public class GameManager : MonoBehaviour
         RoomManager.ClientStopped -= OnNetworkStopped;
         RoomManager.GameStarted -= OnGameStarted;
         RoomManager.PlayerDisconnected -= OnPlayerDisconnected;
-        NetworkClient.UnregisterHandler<SceneLoadedMessage>();
     }
 
     #endregion
@@ -95,8 +93,12 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("Game started event received");
         _currentGameState = GameState.Starting;
-        
-        Invoke(nameof(InitializeGame), gameStartDelay);
+
+        // Спавним NetworkGameEvents, если его ещё нет
+        SpawnNetworkGameEvents();
+
+        // Ждём, пока все клиенты загрузят сцену — они сами сообщат через CmdSceneLoaded
+        // Задержка gameStartDelay будет применена ПОСЛЕ загрузки всех сцен
     }
 
     private void OnPlayerDisconnected(NetworkConnection conn)
@@ -126,10 +128,7 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"Player registered. Total players: {_players.Count}");
 
-        if (CanAssignRoles())
-        {
-            AssignPlayerRoles();
-        }
+        // Роли назначаем только после загрузки сцен всеми — не здесь!
     }
 
     public void UnregisterPlayer(PlayerState player)
@@ -202,9 +201,10 @@ public class GameManager : MonoBehaviour
             UnregisterPlayer(disconnectedPlayer);
         }
 
-        _playerStableIndices.Remove(conn);
+        if (conn is NetworkConnectionToClient toClient)
+            _playerStableIndices.Remove(toClient);
     }
-    
+
     #endregion
 
     #region Role Assignment
@@ -213,10 +213,11 @@ public class GameManager : MonoBehaviour
     {
         return _playerRoles.Count >= 4 && _currentGameState != GameState.Waiting;
     }
-    
+
     private void AssignPlayerRoles()
     {
-        if (!CanAssignRoles() || !NetworkServer.active) return;
+        if (!isServer) return; // Только на сервере
+        if (!CanAssignRoles()) return;
 
         List<RoleType> availableRoles = GenerateRoleDistribution(_playerRoles.Count);
         ShuffleRoles(availableRoles);
@@ -227,13 +228,10 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log($"Roles assigned to {_playerRoles.Count} players");
-        
-        if (NetworkGameEvents.Instance)
-        {
-            NetworkGameEvents.Instance.RpcRolesAssigned();
-        }
+
+        NetworkGameEvents.Instance?.RpcRolesAssigned();
     }
-    
+
     private List<RoleType> GenerateRoleDistribution(int playerCount)
     {
         List<RoleType> roles = new()
@@ -271,7 +269,7 @@ public class GameManager : MonoBehaviour
 
         return roles;
     }
-    
+
     private void ShuffleRoles(List<RoleType> roles)
     {
         for (int i = 0; i < roles.Count; i++)
@@ -284,39 +282,45 @@ public class GameManager : MonoBehaviour
     #endregion
 
     #region Game State Management
-    
+
     private void InitializeGame()
     {
-        // Only execute on server
-        if (!NetworkServer.active) return;
-        
+        if (!isServer || _gameInitialized) return; // Только на сервере + защита
+        _gameInitialized = true;
+
         _currentGameState = GameState.InProgress;
         _gameInProgress = true;
 
-        if (NetworkGameEvents.Instance)
-        {
-            NetworkGameEvents.Instance.RpcGameInitialized();
-        }
+        NetworkGameEvents.Instance?.RpcGameInitialized();
 
         Debug.Log("Game initialized and in progress");
     }
-    
-    public void OnClientSceneLoaded() 
+
+    // Вызывается сервером, когда клиент сообщает, что загрузил сцену
+    public void OnServerReceivedClientSceneLoaded()
     {
-        if (!NetworkServer.active) return; // Only execute on server
-        
+        if (!isServer) return;
+
         _clientsSceneLoadedCount++;
         Debug.Log($"Clients loaded scene: {_clientsSceneLoadedCount}/{_players.Count}");
-    
-        if (_clientsSceneLoadedCount == _players.Count && CanAssignRoles()) 
+
+        // Ждём, пока все загрузятся
+        if (_clientsSceneLoadedCount >= _players.Count && CanAssignRoles())
         {
             AssignPlayerRoles();
+            StartCoroutine(StartGameWithDelay());
         }
     }
-    
+
+    private IEnumerator StartGameWithDelay()
+    {
+        yield return new WaitForSeconds(gameStartDelay);
+        InitializeGame();
+    }
+
     private void HandlePlayerStateChanged(PlayerState.State newState)
     {
-        if (!_gameInProgress || !NetworkServer.active) return;
+        if (!_gameInProgress || !isServer) return;
 
         if (newState == PlayerState.State.Dead)
         {
@@ -324,10 +328,10 @@ public class GameManager : MonoBehaviour
             CheckWinConditions();
         }
     }
-    
+
     private void CheckWinConditions()
     {
-        if (!_gameInProgress || _currentGameState != GameState.InProgress || !NetworkServer.active) return;
+        if (!_gameInProgress || _currentGameState != GameState.InProgress || !isServer) return;
 
         var aliveRoles = _playerRoles.Where(r => r.Player.IsAlive).ToList();
 
@@ -355,16 +359,16 @@ public class GameManager : MonoBehaviour
             EndGame("Sheriff");
         }
     }
-    
+
     private void EndGame(string winningTeam)
     {
-        if (!NetworkServer.active) return;
-        
+        if (!isServer) return;
+
         _currentGameState = GameState.Ended;
         _gameInProgress = false;
 
         Debug.Log($"Game ended. Winner: {winningTeam}");
-        
+
         // Collect all player roles for the end game display
         List<PlayerRoleInfo> allPlayerRoles = new();
         foreach (var playerRole in _playerRoles)
@@ -378,17 +382,15 @@ public class GameManager : MonoBehaviour
                 });
             }
         }
-        
-        if (NetworkGameEvents.Instance)
-        {
-            NetworkGameEvents.Instance.RpcGameOver(winningTeam, allPlayerRoles.ToArray());
-        }
+
+        NetworkGameEvents.Instance?.RpcGameOver(winningTeam, allPlayerRoles.ToArray());
     }
 
     private void ResetGameState()
     {
         _currentGameState = GameState.Waiting;
         _gameInProgress = false;
+        _gameInitialized = false;
         _clientsSceneLoadedCount = 0;
         _players.Clear();
         _playerRoles.Clear();
@@ -418,15 +420,25 @@ public class GameManager : MonoBehaviour
     }
 
     #endregion
-    
-    private void OnSceneLoadedMessage(SceneLoadedMessage msg) 
+
+    #region Network Setup
+
+    private void SpawnNetworkGameEvents()
     {
-        // Only server should handle scene load notifications and send RPCs
-        if (NetworkServer.active && NetworkGameEvents.Instance)
+        if (!isServer) return;
+
+        if (FindObjectOfType<NetworkGameEvents>() == null)
         {
-            NetworkGameEvents.Instance.RpcSceneLoaded();
+            GameObject go = new GameObject("NetworkGameEvents");
+            go.AddComponent<NetworkGameEvents>();
+            go.AddComponent<NetworkIdentity>();
+            DontDestroyOnLoad(go);
+            NetworkServer.Spawn(go);
+            Debug.Log("NetworkGameEvents spawned on server");
         }
     }
+
+    #endregion
 }
 
 [System.Serializable]

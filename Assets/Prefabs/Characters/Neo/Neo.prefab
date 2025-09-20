@@ -2661,6 +2661,7 @@ GameObject:
   - component: {fileID: 5075816131342946485}
   - component: {fileID: 1395359251054008825}
   - component: {fileID: 7230295268493608126}
+  - component: {fileID: 5802743583127121374}
   m_Layer: 3
   m_Name: Neo
   m_TagString: Player
@@ -2946,6 +2947,21 @@ MonoBehaviour:
   shieldRechargeTime: 10
   shieldDuration: 2
   neoAbilityIcon: {fileID: 21300000, guid: 223ca1f3716ea384c949a11e90f14e2b, type: 3}
+--- !u!114 &5802743583127121374
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ccbe1baf9c054c44bf6dc7aa459e0e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SceneLoader
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
 --- !u!1 &5615333487032847895
 GameObject:
   m_ObjectHideFlags: 0

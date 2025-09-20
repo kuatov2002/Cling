@@ -17,7 +17,7 @@ public class RoomManager : NetworkRoomManager
     private int _currentPlayerCount = 0;
 
     [SerializeField] private List<CharacterData> characters = new List<CharacterData>();
-    
+
     public override void Awake()
     {
         base.Awake();
@@ -29,7 +29,7 @@ public class RoomManager : NetworkRoomManager
     public override void OnRoomServerConnect(NetworkConnectionToClient conn)
     {
         base.OnRoomServerConnect(conn);
-        
+
         if (_currentPlayerCount >= maxPlayers)
         {
             conn.Disconnect();
@@ -38,7 +38,7 @@ public class RoomManager : NetworkRoomManager
 
         _currentPlayerCount++;
         Debug.Log($"Player connected. Total players: {_currentPlayerCount}");
-        
+
         PlayerConnected?.Invoke(conn);
         PlayersCountChanged?.Invoke(_currentPlayerCount);
     }
@@ -47,10 +47,10 @@ public class RoomManager : NetworkRoomManager
     {
         _currentPlayerCount = Mathf.Max(0, _currentPlayerCount - 1);
         Debug.Log($"Player disconnected. Total players: {_currentPlayerCount}");
-        
+
         PlayerDisconnected?.Invoke(conn);
         PlayersCountChanged?.Invoke(_currentPlayerCount);
-        
+
         base.OnRoomServerDisconnect(conn);
     }
 
@@ -63,16 +63,14 @@ public class RoomManager : NetworkRoomManager
         }
 
         Debug.Log("All players ready. Starting game...");
-        
-        // Reset character indices for new game
+
         _usedCharacterIndices.Clear();
-        
-        // Notify server/host
+
         GameStarted?.Invoke();
-        
-        // Send message to all clients
+
+        // Отправляем сообщение клиентам (если нужно для UI)
         NetworkServer.SendToAll(new GameStartedMessage());
-        
+
         base.OnRoomServerPlayersReady();
     }
 
@@ -80,20 +78,11 @@ public class RoomManager : NetworkRoomManager
     {
         base.OnStartClient();
         NetworkClient.RegisterHandler<GameStartedMessage>(OnGameStartedMessage);
-        NetworkClient.RegisterHandler<SceneLoadedMessage>(OnSceneLoadedMessage);
-    }
-
-    private void OnSceneLoadedMessage(SceneLoadedMessage msg) 
-    {
-        if (NetworkServer.active && NetworkGameEvents.Instance)
-        {
-            NetworkGameEvents.Instance.RpcSceneLoaded();
-        }
     }
 
     private void OnGameStartedMessage(GameStartedMessage msg)
     {
-        // Only invoke on clients, not on host
+        // Только на клиентах (не на хосте, если он одновременно сервер)
         if (!NetworkServer.active)
         {
             GameStarted?.Invoke();
@@ -108,7 +97,6 @@ public class RoomManager : NetworkRoomManager
             return null;
         }
 
-        // Get unique character index
         int characterIndex = GetUniqueCharacterIndex();
         if (characterIndex == -1)
         {
@@ -118,10 +106,9 @@ public class RoomManager : NetworkRoomManager
 
         GameObject selectedPrefab = characters[characterIndex].characterPrefab;
 
-        // Instantiate at start position or default
         Transform startPos = GetStartPosition();
-        GameObject gamePlayer = startPos 
-            ? Instantiate(selectedPrefab, startPos.position, startPos.rotation) 
+        GameObject gamePlayer = startPos
+            ? Instantiate(selectedPrefab, startPos.position, startPos.rotation)
             : Instantiate(selectedPrefab, Vector3.zero, Quaternion.identity);
 
         if (gamePlayer)
@@ -140,25 +127,24 @@ public class RoomManager : NetworkRoomManager
     {
         if (_usedCharacterIndices.Count >= characters.Count)
         {
-            return -1; // No more unique characters available
+            return -1;
         }
 
         int attempts = 0;
-        int maxAttempts = characters.Count * 2; // Prevent infinite loop
-        
+        int maxAttempts = characters.Count * 2;
+
         while (attempts < maxAttempts)
         {
             int randomIndex = Random.Range(0, characters.Count);
-            
+
             if (_usedCharacterIndices.Add(randomIndex))
             {
                 return randomIndex;
             }
-            
+
             attempts++;
         }
 
-        // Fallback: return first available index
         for (int i = 0; i < characters.Count; i++)
         {
             if (_usedCharacterIndices.Add(i))
@@ -205,8 +191,6 @@ public class RoomManager : NetworkRoomManager
     public override void OnStopHost()
     {
         CleanupNetworkState();
-        NetworkClient.UnregisterHandler<GameStartedMessage>();
-        NetworkClient.UnregisterHandler<SceneLoadedMessage>();
         HostStopped?.Invoke();
         base.OnStopHost();
         Debug.Log("Host stopped");
@@ -215,8 +199,6 @@ public class RoomManager : NetworkRoomManager
     public override void OnStopClient()
     {
         CleanupNetworkState();
-        NetworkClient.UnregisterHandler<GameStartedMessage>();
-        NetworkClient.UnregisterHandler<SceneLoadedMessage>();
         ClientStopped?.Invoke();
         base.OnStopClient();
         Debug.Log("Client stopped");
@@ -228,10 +210,6 @@ public class RoomManager : NetworkRoomManager
         base.OnStopServer();
         Debug.Log("Server stopped");
     }
-
-    #endregion
-
-    #region Private Methods
 
     private void CleanupNetworkState()
     {
@@ -249,25 +227,14 @@ public class RoomManager : NetworkRoomManager
         base.OnRoomServerPlayersNotReady();
     }
 
-    public override bool OnRoomServerSceneLoadedForPlayer(NetworkConnectionToClient conn, GameObject roomPlayer, GameObject gamePlayer) 
+    public override bool OnRoomServerSceneLoadedForPlayer(NetworkConnectionToClient conn, GameObject roomPlayer, GameObject gamePlayer)
     {
         bool result = base.OnRoomServerSceneLoadedForPlayer(conn, roomPlayer, gamePlayer);
-
-        if (result && NetworkServer.active && NetworkGameEvents.Instance) 
-        {
-            conn.Send(new SceneLoadedMessage());
-        }
-
+        // Больше не отправляем SceneLoadedMessage — клиент сам сообщит через CmdSceneLoaded
         return result;
     }
 
     #endregion
 }
 
-public struct SceneLoadedMessage : NetworkMessage 
-{
-}
-
-public struct GameStartedMessage : NetworkMessage
-{
-}
+public struct GameStartedMessage : NetworkMessage { }

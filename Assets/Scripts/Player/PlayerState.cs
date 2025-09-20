@@ -50,8 +50,6 @@ public class PlayerState : NetworkBehaviour
         {
             CmdSetNickname(SaveData.Nickname);
         }
-        
-        CmdConfirmSceneLoaded();
     }
 
     private void HandleStateChanged(State newState)
@@ -103,15 +101,11 @@ public class PlayerState : NetworkBehaviour
     }
     
     [Command]
-    private void CmdConfirmSceneLoaded()
+    public void CmdSceneLoaded()
     {
-        Debug.Log("Client confirmed scene loaded");
-        GameManager.Instance?.OnClientSceneLoaded();
-    }
+        if (!isServer) return;
 
-    [ClientRpc]
-    private void RpcSceneLoaded() 
-    {
-        GameManager.Instance?.OnClientSceneLoaded();
+        Debug.Log($"Server received scene loaded from player {connectionToClient.connectionId}");
+        GameManager.Instance?.OnServerReceivedClientSceneLoaded();
     }
 }

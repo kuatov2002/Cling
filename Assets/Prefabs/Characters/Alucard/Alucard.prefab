@@ -3120,6 +3120,7 @@ GameObject:
   - component: {fileID: 6221513755316972515}
   - component: {fileID: 6675651673657213154}
   - component: {fileID: -545436430807402659}
+  - component: {fileID: -4164845841248182935}
   m_Layer: 3
   m_Name: Alucard
   m_TagString: Player
@@ -3401,6 +3402,21 @@ MonoBehaviour:
   obstacleLayerMask:
     serializedVersion: 2
     m_Bits: 55
+--- !u!114 &-4164845841248182935
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ccbe1baf9c054c44bf6dc7aa459e0e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SceneLoader
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
 --- !u!1 &5619830789860858026
 GameObject:
   m_ObjectHideFlags: 0
