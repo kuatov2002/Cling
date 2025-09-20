@@ -22,8 +22,7 @@ public class Bullet : NetworkBehaviour
         NetworkServer.Destroy(gameObject);
     }
 
-    [ClientRpc]
-    public void RpcInitialize(Vector3 dir, float dmg)
+    public void Initialize(Vector3 dir, float dmg)
     {
         _direction = dir.normalized;
         _damage = dmg;

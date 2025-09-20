@@ -165,7 +165,8 @@ public class Gun : NetworkBehaviour
         Bullet bulletComponent = bullet.GetComponent<Bullet>();
         if (bulletComponent)
         {
-            bulletComponent.RpcInitialize(shootDirection, damage);
+            // Инициализируем сразу на сервере — пуля начнёт движение сразу
+            bulletComponent.Initialize(shootDirection, damage);
         }
     }
 

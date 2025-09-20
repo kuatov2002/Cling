@@ -30,7 +30,7 @@ public class CrazyJackGun : Gun
         Bullet bulletComponent = bullet.GetComponent<Bullet>();
         if (bulletComponent)
         {
-            bulletComponent.RpcInitialize(shootDirection, damage);
+            bulletComponent.Initialize(shootDirection, damage);
         }
     }
 }

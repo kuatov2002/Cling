@@ -544,17 +544,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Version: 3
   m_UsePipelineSettings: 1
   m_AdditionalLightsShadowResolutionTier: 2
-  m_LightLayerMask: 1
-  m_RenderingLayers: 1
   m_CustomShadowLayers: 0
-  m_ShadowLayerMask: 1
-  m_ShadowRenderingLayers: 1
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
   m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &149242482
 GameObject:
   m_ObjectHideFlags: 0
@@ -1522,7 +1528,6 @@ MonoBehaviour:
   - {fileID: 6823424542941286313, guid: 6571762b868d5a641ab81913cb25adf1, type: 3}
   - {fileID: 5538461023050153465, guid: b32664483d33e944891e6a2c9c41406a, type: 3}
   - {fileID: 5538461023050153465, guid: ed50899509adbdb4a9af144934b7cefb, type: 3}
-  - {fileID: 5538461023050153465, guid: b9f81a40fba3ca8448bcf55ee57393b8, type: 3}
   - {fileID: 4716904436788592931, guid: 875c7df6afa68494cbec04d78525d8f6, type: 3}
   - {fileID: 5538461023050153465, guid: dcfb6539e83ae2545ad4deca8b7d1dd6, type: 3}
   - {fileID: 5538461023050153465, guid: 69bfbeb543f4c0343af6fdcf54eefec4, type: 3}
@@ -1550,12 +1555,6 @@ MonoBehaviour:
   clientIndex: 0
   maxPlayers: 7
   characters:
-  - {fileID: 11400000, guid: eea8e0c6a61ae8d449b45413baaea5c0, type: 2}
-  - {fileID: 11400000, guid: 313dba5f918c13647853f82d3339fc32, type: 2}
-  - {fileID: 11400000, guid: 8926d7c10b051ef43898fd2d15fa8214, type: 2}
-  - {fileID: 11400000, guid: 998d8ae618c531042b8b9fee83c69f33, type: 2}
-  - {fileID: 11400000, guid: 3690c9a51b475b241b2b58bfe0dc3814, type: 2}
-  - {fileID: 11400000, guid: bde2364b888475540bad16f1c25a9880, type: 2}
   - {fileID: 11400000, guid: d4a45e81ff60bd14b8debbd7b3796cd7, type: 2}
 --- !u!114 &389404822
 MonoBehaviour:
@@ -5142,7 +5141,6 @@ MonoBehaviour:
   m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
   m_RequiresDepthTexture: 0
   m_RequiresColorTexture: 0
-  m_Version: 2
   m_TaaSettings:
     m_Quality: 3
     m_FrameInfluence: 0.1
@@ -5150,6 +5148,7 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!1 &1465399228
 GameObject:
   m_ObjectHideFlags: 0
