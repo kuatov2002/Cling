@@ -4,7 +4,7 @@ using System.Linq;
 using Mirror;
 using UnityEngine;
 
-public class GameManager : NetworkBehaviour // <-- Важно: NetworkBehaviour!
+public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
 {
     public static GameManager Instance;
 
@@ -216,7 +216,7 @@ public class GameManager : NetworkBehaviour // <-- Важно: NetworkBehaviour!
 
     private void AssignPlayerRoles()
     {
-        if (!isServer) return; // Только на сервере
+        if (!NetworkServer.active) return;
         if (!CanAssignRoles()) return;
 
         List<RoleType> availableRoles = GenerateRoleDistribution(_playerRoles.Count);
@@ -285,7 +285,7 @@ public class GameManager : NetworkBehaviour // <-- Важно: NetworkBehaviour!
 
     private void InitializeGame()
     {
-        if (!isServer || _gameInitialized) return; // Только на сервере + защита
+        if (!NetworkServer.active) return;
         _gameInitialized = true;
 
         _currentGameState = GameState.InProgress;
@@ -299,7 +299,7 @@ public class GameManager : NetworkBehaviour // <-- Важно: NetworkBehaviour!
     // Вызывается сервером, когда клиент сообщает, что загрузил сцену
     public void OnServerReceivedClientSceneLoaded()
     {
-        if (!isServer) return;
+        if (!NetworkServer.active) return;
 
         _clientsSceneLoadedCount++;
         Debug.Log($"Clients loaded scene: {_clientsSceneLoadedCount}/{_players.Count}");
@@ -320,7 +320,7 @@ public class GameManager : NetworkBehaviour // <-- Важно: NetworkBehaviour!
 
     private void HandlePlayerStateChanged(PlayerState.State newState)
     {
-        if (!_gameInProgress || !isServer) return;
+        if (!_gameInProgress || !NetworkServer.active) return;
 
         if (newState == PlayerState.State.Dead)
         {
@@ -331,7 +331,7 @@ public class GameManager : NetworkBehaviour // <-- Важно: NetworkBehaviour!
 
     private void CheckWinConditions()
     {
-        if (!_gameInProgress || _currentGameState != GameState.InProgress || !isServer) return;
+        if (!_gameInProgress || _currentGameState != GameState.InProgress || !NetworkServer.active) return;
 
         var aliveRoles = _playerRoles.Where(r => r.Player.IsAlive).ToList();
 
@@ -362,7 +362,7 @@ public class GameManager : NetworkBehaviour // <-- Важно: NetworkBehaviour!
 
     private void EndGame(string winningTeam)
     {
-        if (!isServer) return;
+        if (!NetworkServer.active) return;
 
         _currentGameState = GameState.Ended;
         _gameInProgress = false;
@@ -425,7 +425,7 @@ public class GameManager : NetworkBehaviour // <-- Важно: NetworkBehaviour!
 
     private void SpawnNetworkGameEvents()
     {
-        if (!isServer) return;
+        if (!NetworkServer.active) return;
 
         if (FindObjectOfType<NetworkGameEvents>() == null)
         {
