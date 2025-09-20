@@ -13,7 +13,6 @@ public class PlayerMovement : NetworkBehaviour
     
     [Header("Камера FreeLook")]
     [SerializeField] private Gun gun;
-    
     [SerializeField] private Animator animator;
     
     private AutoAimSystem _autoAimSystem;
@@ -23,8 +22,25 @@ public class PlayerMovement : NetworkBehaviour
     private CinemachineCamera[] _freeLookCam;
     private Vector2 _look;
     private bool _isAiming = false;
+    
     private static readonly int Speed = Animator.StringToHash("Speed");
+    private static readonly int Strafe = Animator.StringToHash("Strafe");
+    private static readonly int IsAiming = Animator.StringToHash("IsAiming");
+
     private Vector2 _smoothInput;
+    private float _animatorSpeed;
+    private float _animatorStrafe;
+
+    // Синхронизируемые поля для анимаций
+    [SyncVar(hook = nameof(OnSpeedChanged))]
+    private float _networkSpeed;
+
+    [SyncVar(hook = nameof(OnStrafeChanged))]
+    private float _networkStrafe;
+
+    [SyncVar(hook = nameof(OnIsAimingChanged))]
+    private bool _networkIsAiming;
+
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
@@ -52,10 +68,12 @@ public class PlayerMovement : NetworkBehaviour
 
     private void Update()
     {
-        if (!isLocalPlayer) return;
-        HandleShooting();
-        HandleMouseLook();
-        HandleMovement();
+        if (isLocalPlayer)
+        {
+            HandleShooting();
+            HandleMouseLook();
+            HandleMovement();
+        }
     }
 
     private void HandleShooting()
@@ -65,8 +83,8 @@ public class PlayerMovement : NetworkBehaviour
             if (gun.Charge())
             {
                 _isAiming = true;
-                animator?.SetBool(IsAiming, true);
-                //_freeLookCam[0].gameObject.SetActive(false);
+                _freeLookCam[0].gameObject.SetActive(false);
+                CmdSetAnimationValues(_animatorSpeed, _animatorStrafe, _isAiming);
             }
         }
 
@@ -75,18 +93,17 @@ public class PlayerMovement : NetworkBehaviour
             if (gun.Fire())
             {
                 _isAiming = false;
-                animator?.SetBool(IsAiming, false);
-                //_freeLookCam[0].gameObject.SetActive(true);
+                _freeLookCam[0].gameObject.SetActive(true);
+                CmdSetAnimationValues(_animatorSpeed, _animatorStrafe, _isAiming);
             }
         }
 
-        // Cancel charge on right mouse button
         if (Input.GetButtonDown("Fire2") && _isAiming)
         {
             gun.CancelCharge();
             _isAiming = false;
-            animator?.SetBool(IsAiming, false);
-            //_freeLookCam[0].gameObject.SetActive(true);
+            _freeLookCam[0].gameObject.SetActive(true);
+            CmdSetAnimationValues(_animatorSpeed, _animatorStrafe, _isAiming);
         }
     }
 
@@ -97,7 +114,6 @@ public class PlayerMovement : NetworkBehaviour
 
         Vector3 originalDirection = followTarget.forward;
         
-        // Apply auto-aim when aiming
         if (_isAiming && _autoAimSystem)
         {
             Transform target = _autoAimSystem.GetBestTarget(originalDirection);
@@ -108,7 +124,6 @@ public class PlayerMovement : NetworkBehaviour
             }
         }
         
-        // Standard mouse look
         followTarget.rotation *= Quaternion.AngleAxis(_look.x, Vector3.up);
         followTarget.rotation *= Quaternion.AngleAxis(_look.y, Vector3.right);
 
@@ -130,46 +145,59 @@ public class PlayerMovement : NetworkBehaviour
         followTarget.localEulerAngles = new Vector3(angles.x, 0, 0);
     }
 
-    private float _animatorSpeed;
-    private float _animatorStrafe;
-    private static readonly int IsAiming = Animator.StringToHash("IsAiming");
-    private static readonly int Strafe = Animator.StringToHash("Strafe");
-
     private void HandleMovement()
     {
-        // Получаем "сырой" ввод
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
         Vector2 rawInput = new Vector2(horizontal, vertical);
 
-        // Плавно интерполируем реальный ввод
         _smoothInput = Vector2.Lerp(_smoothInput, rawInput, Time.deltaTime * 5f);
 
-        // Нормализуем, чтобы сохранить круглую зону движения (не ромб)
         Vector2 inputVector = _smoothInput;
         if (inputVector.magnitude > 1f)
             inputVector.Normalize();
 
-        // Вычисляем направление движения
         Vector3 moveDirection = Vector3.zero;
         if (inputVector.magnitude > 0.01f)
         {
             moveDirection = transform.TransformDirection(new Vector3(inputVector.x, 0f, inputVector.y)) * moveSpeed;
         }
 
-        // Плавное изменение Speed для аниматора
         float targetSpeed = inputVector.y * moveSpeed;
         _animatorSpeed = Mathf.Lerp(_animatorSpeed, targetSpeed, Time.deltaTime * 5f);
-        animator?.SetFloat(Speed, _animatorSpeed);
 
-        // Плавное изменение Strafe для аниматора
         float targetStrafe = inputVector.x * moveSpeed;
         _animatorStrafe = Mathf.Lerp(_animatorStrafe, targetStrafe, Time.deltaTime * 5f);
-        animator?.SetFloat(Strafe, _animatorStrafe);
 
-        // Гравитация и движение
+        // Отправляем на сервер, чтобы рассылалось всем
+        CmdSetAnimationValues(_animatorSpeed, _animatorStrafe, _isAiming);
+
         _velocity.y += gravity * Time.deltaTime;
         Vector3 finalMovement = moveDirection + Vector3.up * _velocity.y;
         _controller.Move(finalMovement * Time.deltaTime);
+    }
+
+    [Command]
+    private void CmdSetAnimationValues(float speed, float strafe, bool isAiming)
+    {
+        _networkSpeed = speed;
+        _networkStrafe = strafe;
+        _networkIsAiming = isAiming;
+    }
+
+    // Хуки — вызываются у всех клиентов при изменении SyncVar
+    private void OnSpeedChanged(float oldValue, float newValue)
+    {
+        animator?.SetFloat(Speed, newValue);
+    }
+
+    private void OnStrafeChanged(float oldValue, float newValue)
+    {
+        animator?.SetFloat(Strafe, newValue);
+    }
+
+    private void OnIsAimingChanged(bool oldValue, bool newValue)
+    {
+        animator?.SetBool(IsAiming, newValue);
     }
 }

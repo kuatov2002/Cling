@@ -11,7 +11,7 @@ public class NeoHealth : PlayerHealth
     
     private bool _isShieldOnCooldown = false;
     private Coroutine _shieldCoroutine;
-    private const string NeoAbilityName = "Neo Shield";
+    private const string NeoAbilityName = "Plasma field";
 
     public override void OnStartLocalPlayer()
     {
