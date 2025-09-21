@@ -1,11 +1,22 @@
+using System;
 using System.Collections;
 using Mirror;
 using UnityEngine;
+using System.Collections.Generic; // Необходимо для SyncList
+
+// Mirror требует специальный тип для SyncList, если вы хотите хранить сложные объекты.
+// Однако BaseItem - это ScriptableObject/NetworkBehaviour, который не может быть напрямую сериализован Mirror для SyncList.
+// Поэтому мы будем хранить имя предмета (string) в SyncList.
+// Это требует методов для преобразования между BaseItem и string.
+[System.Serializable]
+public class SyncListItemNames : SyncList<string> { }
 
 public class PlayerInventory : NetworkBehaviour
 {
     [Header("Inventory Configuration")]
-    [SerializeField] private BaseItem[] inventorySlots;
+    // Используем массив для определения размера и типа слотов (сервер/клиент)
+    // Этот массив не будет синхронизироваться напрямую
+    [SerializeField] private BaseItem[] inventorySlotsTemplate; 
 
     [Header("Active Item Display")]
     [SerializeField] private int activeItemIndex = 0;
@@ -16,42 +27,59 @@ public class PlayerInventory : NetworkBehaviour
         KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3,
         KeyCode.Alpha4, KeyCode.Alpha5
     };
-
     [SerializeField] private KeyCode useItemKey = KeyCode.E;
 
     [SyncVar(hook = nameof(OnMoneyChanged))]
     protected int money = 2;
 
-    // Синхронизация слотов инвентаря
-    [SyncVar(hook = nameof(OnInventoryChanged))]
-    private string inventoryData = "";
+    // Используем SyncList для синхронизации имен предметов в слотах
+    public SyncListItemNames syncInventorySlotNames = new SyncListItemNames();
+
+    // Локальный кэш для преобразования имен в объекты BaseItem
+    // Этот массив заполняется на клиенте после десериализации имен из syncInventorySlotNames
+    private BaseItem[] inventorySlots;
 
     public BaseItem CurrentActiveSlot => 
         inventorySlots != null && activeItemIndex < inventorySlots.Length 
             ? inventorySlots[activeItemIndex] 
             : null;
-
     public BaseItem CurrentActiveItem => CurrentActiveSlot;
     public int ActiveItemIndex => activeItemIndex;
     public int Money => money;
-
-    [SyncVar(hook = nameof(OnLastMoneyTakeTimeChanged))]
-    private float _lastMoneyTakeTime = -Mathf.Infinity;
     
     [SerializeField] private float moneyTakeInterval = 10f;
-
+    
+    [SyncVar] private float _lastMoneyTakeTime = -Mathf.Infinity;
     public override void OnStartServer()
     {
-        _lastMoneyTakeTime = (float)NetworkTime.time;
+        // Инициализируем SyncList на сервере
+        // Размер должен соответствовать шаблону
+        if (inventorySlotsTemplate != null)
+        {
+            foreach (var item in inventorySlotsTemplate)
+            {
+                // Добавляем пустые строки для каждого слота
+                syncInventorySlotNames.Add(item ? item.itemName : "");
+            }
+        }
+        
         StartCoroutine(MoneyTakeRoutine());
-        SyncInventoryToClients();
+        // Начальная синхронизация не требуется, так как SyncList синхронизируется автоматически
     }
 
     public override void OnStartClient()
     {
+        // Инициализируем локальный кэш на клиенте
+        inventorySlots = inventorySlotsTemplate != null ? new BaseItem[inventorySlotsTemplate.Length] : Array.Empty<BaseItem>(); // Или определите размер по умолчанию
+
+        // Подписываемся на изменения SyncList
+        syncInventorySlotNames.Callback += OnSyncListChanged;
+
+        // Первоначальное заполнение локального кэша
+        DeserializeInventoryFromSyncList();
+        
         if (isLocalPlayer)
         {
-            DeserializeInventory();
             UpdateActiveItem();
             UpdateMoneyDisplay();
         }
@@ -66,36 +94,47 @@ public class PlayerInventory : NetworkBehaviour
                 money++;
                 _lastMoneyTakeTime = (float)NetworkTime.time;
             }
-
             yield return new WaitForSeconds(0.17f);
         }
     }
 
+    private void OnSyncListChanged(SyncList<string>.Operation op, int index, string oldItem, string newItem)
+    {
+        switch (op)
+        {
+            case SyncList<string>.Operation.OP_SET:
+                UpdateSlot(index, newItem);
+                break;
+            case SyncList<string>.Operation.OP_ADD:
+            case SyncList<string>.Operation.OP_INSERT:
+                // Пересоздать весь кэш, так как размер изменился
+                DeserializeInventoryFromSyncList();
+                break;
+            case SyncList<string>.Operation.OP_REMOVEAT:
+            case SyncList<string>.Operation.OP_CLEAR:
+                DeserializeInventoryFromSyncList();
+                break;
+        }
+
+        if (isLocalPlayer)
+        {
+            UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
+        }
+    }
+
+    private void UpdateSlot(int index, string itemName)
+    {
+        if (index < inventorySlots.Length)
+        {
+            inventorySlots[index] = string.IsNullOrEmpty(itemName) ? null : FindItemByName(itemName);
+        }
+    }
+    
     private void OnMoneyChanged(int oldAmount, int newAmount)
     {
         if (isLocalPlayer)
         {
             UpdateMoneyDisplay();
-        }
-    }
-
-    private void OnLastMoneyTakeTimeChanged(float oldAmount, float newAmount)
-    {
-        if (isLocalPlayer)
-        {
-            UpdateMoneyDisplay();
-        }
-    }
-
-    private void OnInventoryChanged(string oldData, string newData)
-    {
-        if (!isServer)
-        {
-            DeserializeInventory();
-            if (isLocalPlayer)
-            {
-                UpdateActiveItem();
-            }
         }
     }
 
@@ -108,7 +147,7 @@ public class PlayerInventory : NetworkBehaviour
 
     private void HandleHotkeyInput()
     {
-        for (int i = 0; i < hotkeys.Length && i < inventorySlots.Length; i++)
+        for (int i = 0; i < hotkeys.Length && i < (inventorySlots?.Length ?? 0); i++)
         {
             if (Input.GetKeyDown(hotkeys[i]))
             {
@@ -126,23 +165,13 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
-    private void UseActiveItem()
-    {
-        BaseItem activeItem = CurrentActiveItem;
-        if (activeItem && activeItem.CanUse())
-        {
-            CmdUseItem(activeItemIndex);
-        }
-    }
-
     private void SetActiveItem(int index)
     {
-        if (index < 0 || index >= inventorySlots.Length)
+        if (index < 0 || index >= (inventorySlots?.Length ?? 0))
         {
             Debug.LogWarning($"Invalid inventory index: {index}");
             return;
         }
-
         activeItemIndex = index;
         UpdateActiveItem();
     }
@@ -184,70 +213,51 @@ public class PlayerInventory : NetworkBehaviour
             money -= amount;
             return true;
         }
-
         return false;
     }
 
+    // Добавляет предмет в первый свободный слот
+    [Server] 
     public bool AddItem(BaseItem item)
     {
         if (!item) return false;
-
-        for (int i = 0; i < inventorySlots.Length; i++)
+        
+        // Найдем первый пустой слот в syncInventorySlotNames
+        for (int i = 0; i < syncInventorySlotNames.Count; i++) 
         {
-            if (!inventorySlots[i])
+            if (string.IsNullOrEmpty(syncInventorySlotNames[i])) 
             {
-                inventorySlots[i] = item;
-                
-                if (isServer)
-                {
-                    SyncInventoryToClients();
-                }
-                
-                if (i == activeItemIndex)
-                {
-                    UpdateActiveItem();
-                }
-
-                if (isLocalPlayer)
-                {
-                    UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
-                }
-
+                // Устанавливаем имя предмета в SyncList
+                syncInventorySlotNames[i] = item.itemName;
+                // SyncList автоматически синхронизирует это изменение с клиентами
+                // Обработчик OnSyncListChanged на клиентах обновит их inventorySlots
                 return true;
             }
         }
-
-        return false;
+        return false; // Инвентарь полон
     }
 
+    // Удаляет предмет из указанного слота
+    [Server]
     public bool RemoveItem(int slotIndex)
     {
-        if (slotIndex < 0 || slotIndex >= inventorySlots.Length || 
-            !inventorySlots[slotIndex])
+        if (slotIndex < 0 || slotIndex >= syncInventorySlotNames.Count)
         {
             return false;
         }
-
-        inventorySlots[slotIndex] = null;
-        
-        if (isServer)
+        if (string.IsNullOrEmpty(syncInventorySlotNames[slotIndex]))
         {
-            SyncInventoryToClients();
+            return false; // Слот уже пуст
         }
-        
-        if (slotIndex == activeItemIndex)
-        {
-            UpdateActiveItem();
-        }
-        
-        if (isLocalPlayer)
-        {
-            UIManager.Instance?.UpdateInventoryUI(inventorySlots, activeItemIndex);
-        }
-
+        // Очищаем слот в SyncList
+        syncInventorySlotNames[slotIndex] = "";
+        // SyncList автоматически синхронизирует это изменение с клиентами
+        // Обработчик OnSyncListChanged на клиентах обновит их inventorySlots
         return true;
     }
 
+    // Вызывается, когда слот изменяется (например, извне)
+    // Может быть полезно, если UI напрямую изменяет слоты
     public void OnInventorySlotChanged(int slotIndex)
     {
         if (slotIndex == activeItemIndex)
@@ -260,83 +270,61 @@ public class PlayerInventory : NetworkBehaviour
         }
     }
 
+    // Команда для добавления предмета
     [Command]
     public void CmdAddItem(BaseItem item)
     {
-        if (AddItem(item))
+        // Логика добавления на сервере
+        AddItem(item);
+        // SyncList автоматически синхронизирует изменения с клиентами
+    }
+
+    private void UseActiveItem()
+    {
+        // Только отправляем команду, если слот валиден
+        if (activeItemIndex >= 0 && activeItemIndex < syncInventorySlotNames.Count)
         {
-            SyncInventoryToClients();
+            CmdUseItem(activeItemIndex);
         }
     }
-    
+
     [Command]
     private void CmdUseItem(int slotIndex)
     {
-        if (slotIndex < 0 || slotIndex >= inventorySlots.Length || 
-            !inventorySlots[slotIndex])
-            return;
+        if (!IsSlotIndexValid(slotIndex)) return;
 
-        BaseItem item = inventorySlots[slotIndex];
+        string itemName = syncInventorySlotNames[slotIndex];
+        if (string.IsNullOrEmpty(itemName)) return;
+
+        BaseItem item = FindItemByName(itemName);
+        if (item == null) 
+        {
+            Debug.LogWarning($"Player {connectionToClient} tried to use non-existent item: {itemName}");
+            return; 
+        }
+
         if (item.CanUse())
         {
             item.Use(this);
-            inventorySlots[slotIndex] = null;
-            
-            SyncInventoryToClients();
+            RemoveItem(slotIndex);
         }
     }
 
-    [Server]
-    private void SyncInventoryToClients()
+    private bool IsSlotIndexValid(int index) => 
+        index >= 0 && index < syncInventorySlotNames.Count;
+
+    // Метод для десериализации имен из SyncList в локальный кэш inventorySlots
+    // Вызывается при подключении клиента и при изменениях SyncList
+    private void DeserializeInventoryFromSyncList()
     {
-        inventoryData = SerializeInventory();
-    }
-
-    private string SerializeInventory()
-    {
-        string result = "";
-        for (int i = 0; i < inventorySlots.Length; i++)
+        for (int i = 0; i < syncInventorySlotNames.Count && i < inventorySlots.Length; i++)
         {
-            if (inventorySlots[i])
-            {
-                result += $"{i}:{inventorySlots[i].itemName};";
-            }
-        }
-
-        return result;
-    }
-
-    private void DeserializeInventory()
-    {
-        // Очищаем инвентарь
-        for (int i = 0; i < inventorySlots.Length; i++)
-        {
-            inventorySlots[i] = null;
-        }
-
-        if (string.IsNullOrEmpty(inventoryData)) return;
-
-        string[] slots = inventoryData.Split(';');
-        foreach (string slot in slots)
-        {
-            if (string.IsNullOrEmpty(slot)) continue;
-
-            string[] parts = slot.Split(':');
-            if (parts.Length == 2)
-            {
-                int index = int.Parse(parts[0]);
-                string itemName = parts[1];
-                
-                // Находим предмет по имени (можно заменить на более сложную логику)
-                BaseItem item = FindItemByName(itemName);
-                if (item && index < inventorySlots.Length)
-                {
-                    inventorySlots[index] = item;
-                }
-            }
+             string itemName = syncInventorySlotNames[i];
+             inventorySlots[i] = string.IsNullOrEmpty(itemName) ? null : FindItemByName(itemName);
         }
     }
 
+    // Метод для поиска предмета по имени (как и было)
     private BaseItem FindItemByName(string itemName)
     {
         Debug.Log($"пытаюсь найти Items/{itemName}");
@@ -347,7 +335,6 @@ public class PlayerInventory : NetworkBehaviour
             Debug.Log($"Нашел Items/{itemName}");
             return itemPrefab.GetComponent<BaseItem>();
         }
-
         Debug.Log($"Не наход Items/{itemName}");
         return null;
     }
