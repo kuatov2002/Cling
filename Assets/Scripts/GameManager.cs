@@ -94,9 +94,6 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
         Debug.Log("Game started event received");
         _currentGameState = GameState.Starting;
 
-        // Спавним NetworkGameEvents, если его ещё нет
-        SpawnNetworkGameEvents();
-
         // Ждём, пока все клиенты загрузят сцену — они сами сообщат через CmdSceneLoaded
         // Задержка gameStartDelay будет применена ПОСЛЕ загрузки всех сцен
     }
@@ -417,25 +414,6 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
     public List<PlayerRole> GetPlayersWithRole(RoleType role)
     {
         return _playerRoles.Where(r => r.CurrentRole == role).ToList();
-    }
-
-    #endregion
-
-    #region Network Setup
-
-    private void SpawnNetworkGameEvents()
-    {
-        if (!NetworkServer.active) return;
-
-        if (FindObjectOfType<NetworkGameEvents>() == null)
-        {
-            GameObject go = new GameObject("NetworkGameEvents");
-            go.AddComponent<NetworkGameEvents>();
-            go.AddComponent<NetworkIdentity>();
-            DontDestroyOnLoad(go);
-            NetworkServer.Spawn(go);
-            Debug.Log("NetworkGameEvents spawned on server");
-        }
     }
 
     #endregion
