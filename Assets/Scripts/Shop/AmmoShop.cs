@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class AmmoShop : NetworkBehaviour, IInteractable
 {
-    [SerializeField] private int ammoCost = 1;
+    [SerializeField] private int ammoCost = 2;
     
     public string InteractText => $"Press F to buy ammo ({ammoCost}$)";
     

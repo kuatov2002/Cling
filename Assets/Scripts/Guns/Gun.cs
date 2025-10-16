@@ -64,7 +64,7 @@ public class Gun : NetworkBehaviour
         if (bulletAmount >= maxBulletAmount) return;
         
         // Get price from current ammo shop
-        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 1; // Default to 1 if no shop
+        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 2; // Default to 1 if no shop
         
         if (_playerInventory && _playerInventory.Money >= ammoCost)
         {
@@ -76,7 +76,7 @@ public class Gun : NetworkBehaviour
     public bool CanAddAmmo()
     {
         // Get price from current ammo shop
-        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 1; // Default to 1 if no shop
+        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 2; // Default to 1 if no shop
         
         return bulletAmount < maxBulletAmount && 
                _playerInventory && 
