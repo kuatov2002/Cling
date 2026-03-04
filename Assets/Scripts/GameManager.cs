@@ -4,25 +4,44 @@ using System.Linq;
 using Mirror;
 using UnityEngine;
 
-public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
+public class GameManager : NetworkBehaviour
 {
     public static GameManager Instance;
 
-    [Header("Game Configuration")]
+    [Header("Match Configuration")]
+    [SerializeField] private float matchDuration = 300f;
+    [SerializeField] private int killsToWin = 25;
+    [SerializeField] private float respawnDelay = 3f;
     [SerializeField] private float gameStartDelay = 3f;
 
     // Player Management
     private readonly List<PlayerState> _players = new();
-    private readonly List<PlayerRole> _playerRoles = new();
+    private readonly List<PlayerTeam> _playerTeams = new();
     private readonly Dictionary<NetworkConnectionToClient, int> _playerStableIndices = new();
     private int _nextPlayerIndex = 0;
+
+    // Match State (synced to all clients)
+    [SyncVar(hook = nameof(OnMatchTimeChanged))]
+    private float _matchTimeRemaining;
+
+    [SyncVar(hook = nameof(OnRedKillsChanged))]
+    private int _redTeamKills;
+
+    [SyncVar(hook = nameof(OnBlueKillsChanged))]
+    private int _blueTeamKills;
 
     // Game State
     private GameState _currentGameState = GameState.Waiting;
     private bool _gameInProgress = false;
-    private bool _gameInitialized = false; // Защита от повторной инициализации
-
+    private bool _gameInitialized = false;
+    private bool _timerRunning = false;
     private int _clientsSceneLoadedCount = 0;
+
+    // Spawn Points
+    private List<TeamSpawnPoint> _redSpawnPoints = new();
+    private List<TeamSpawnPoint> _blueSpawnPoints = new();
+
+    public float RespawnDelay => respawnDelay;
 
     public enum GameState
     {
@@ -36,8 +55,13 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
 
     private void Awake()
     {
-        InitializeSingleton();
-        Debug.Log("GameManager Awake");
+        if (Instance && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
 
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 1;
@@ -46,28 +70,31 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
     private void Start()
     {
         SubscribeToNetworkEvents();
+        CollectSpawnPoints();
+    }
+
+    private void Update()
+    {
+        if (!isServer || !_timerRunning) return;
+
+        _matchTimeRemaining -= Time.deltaTime;
+        if (_matchTimeRemaining <= 0f)
+        {
+            _matchTimeRemaining = 0f;
+            _timerRunning = false;
+            EndGameByTimeout();
+        }
     }
 
     private void OnDestroy()
     {
         UnsubscribeFromNetworkEvents();
+        if (Instance == this) Instance = null;
     }
 
     #endregion
 
     #region Initialization
-
-    private void InitializeSingleton()
-    {
-        if (Instance && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
 
     private void SubscribeToNetworkEvents()
     {
@@ -85,6 +112,13 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
         RoomManager.PlayerDisconnected -= OnPlayerDisconnected;
     }
 
+    private void CollectSpawnPoints()
+    {
+        var allSpawns = FindObjectsByType<TeamSpawnPoint>(FindObjectsSortMode.None);
+        _redSpawnPoints = allSpawns.Where(s => s.team == Team.Red).ToList();
+        _blueSpawnPoints = allSpawns.Where(s => s.team == Team.Blue).ToList();
+    }
+
     #endregion
 
     #region Network Events
@@ -93,9 +127,6 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
     {
         Debug.Log("Game started event received");
         _currentGameState = GameState.Starting;
-
-        // Ждём, пока все клиенты загрузят сцену — они сами сообщат через CmdSceneLoaded
-        // Задержка gameStartDelay будет применена ПОСЛЕ загрузки всех сцен
     }
 
     private void OnPlayerDisconnected(NetworkConnection conn)
@@ -120,12 +151,10 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
         player.OnStateChanged += HandlePlayerStateChanged;
 
         AssignStableIndex(player);
-        RegisterPlayerRole(player);
+        RegisterPlayerTeam(player);
         UpdateAllPlayerIndices();
 
         Debug.Log($"Player registered. Total players: {_players.Count}");
-
-        // Роли назначаем только после загрузки сцен всеми — не здесь!
     }
 
     public void UnregisterPlayer(PlayerState player)
@@ -135,15 +164,10 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
         player.OnStateChanged -= HandlePlayerStateChanged;
         _players.Remove(player);
 
-        UnregisterPlayerRole(player);
+        UnregisterPlayerTeam(player);
         UpdateAllPlayerIndices();
 
         Debug.Log($"Player unregistered. Remaining players: {_players.Count}");
-
-        if (_gameInProgress)
-        {
-            CheckWinConditions();
-        }
     }
 
     private void AssignStableIndex(PlayerState player)
@@ -156,25 +180,25 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
         }
     }
 
-    private void RegisterPlayerRole(PlayerState player)
+    private void RegisterPlayerTeam(PlayerState player)
     {
-        PlayerRole playerRole = player.GetComponent<PlayerRole>();
-        if (playerRole && !_playerRoles.Contains(playerRole))
+        PlayerTeam playerTeam = player.GetComponent<PlayerTeam>();
+        if (playerTeam && !_playerTeams.Contains(playerTeam))
         {
-            _playerRoles.Add(playerRole);
+            _playerTeams.Add(playerTeam);
         }
-        else if (!playerRole)
+        else if (!playerTeam)
         {
-            Debug.LogError("PlayerRole component not found on player");
+            Debug.LogError("PlayerTeam component not found on player");
         }
     }
 
-    private void UnregisterPlayerRole(PlayerState player)
+    private void UnregisterPlayerTeam(PlayerState player)
     {
-        PlayerRole playerRole = player.GetComponent<PlayerRole>();
-        if (playerRole && _playerRoles.Contains(playerRole))
+        PlayerTeam playerTeam = player.GetComponent<PlayerTeam>();
+        if (playerTeam && _playerTeams.Contains(playerTeam))
         {
-            _playerRoles.Remove(playerRole);
+            _playerTeams.Remove(playerTeam);
         }
     }
 
@@ -204,76 +228,41 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
 
     #endregion
 
-    #region Role Assignment
+    #region Team Assignment
 
-    private bool CanAssignRoles()
+    private bool CanStartGame()
     {
-        return _playerRoles.Count >= 4 && _currentGameState != GameState.Waiting;
+        return _playerTeams.Count >= 2 && _currentGameState != GameState.Waiting;
     }
 
-    private void AssignPlayerRoles()
+    [Server]
+    private void AssignPlayerTeams()
     {
         if (!NetworkServer.active) return;
-        if (!CanAssignRoles()) return;
+        if (!CanStartGame()) return;
 
-        List<RoleType> availableRoles = GenerateRoleDistribution(_playerRoles.Count);
-        ShuffleRoles(availableRoles);
+        int redCount = 0;
+        int blueCount = 0;
 
-        for (int i = 0; i < _playerRoles.Count && i < availableRoles.Count; i++)
+        for (int i = 0; i < _playerTeams.Count; i++)
         {
-            _playerRoles[i].CurrentRole = availableRoles[i];
+            // Alternate: assign to team with fewer players
+            Team assignedTeam;
+            if (redCount <= blueCount)
+            {
+                assignedTeam = Team.Red;
+                redCount++;
+            }
+            else
+            {
+                assignedTeam = Team.Blue;
+                blueCount++;
+            }
+
+            _playerTeams[i].CurrentTeam = assignedTeam;
         }
 
-        Debug.Log($"Roles assigned to {_playerRoles.Count} players");
-
-        NetworkGameEvents.Instance?.RpcRolesAssigned();
-    }
-
-    private List<RoleType> GenerateRoleDistribution(int playerCount)
-    {
-        List<RoleType> roles = new()
-        {
-            RoleType.Sheriff,
-            RoleType.Renegade
-        };
-
-        int outlawCount = playerCount switch
-        {
-            4 => 2,
-            5 => 2,
-            6 => 3,
-            7 => 3,
-            _ => 0
-        };
-
-        for (int i = 0; i < outlawCount; i++)
-        {
-            roles.Add(RoleType.Outlaw);
-        }
-
-        int deputyCount = playerCount switch
-        {
-            5 => 1,
-            6 => 1,
-            7 => 2,
-            _ => 0
-        };
-
-        for (int i = 0; i < deputyCount; i++)
-        {
-            roles.Add(RoleType.Deputy);
-        }
-
-        return roles;
-    }
-
-    private void ShuffleRoles(List<RoleType> roles)
-    {
-        for (int i = 0; i < roles.Count; i++)
-        {
-            int randomIndex = Random.Range(i, roles.Count);
-            (roles[i], roles[randomIndex]) = (roles[randomIndex], roles[i]);
-        }
+        Debug.Log($"Teams assigned: {redCount} Red, {blueCount} Blue");
     }
 
     #endregion
@@ -288,12 +277,20 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
         _currentGameState = GameState.InProgress;
         _gameInProgress = true;
 
+        StartMatchTimer();
+
         NetworkGameEvents.Instance?.RpcGameInitialized();
 
         Debug.Log("Game initialized and in progress");
     }
 
-    // Вызывается сервером, когда клиент сообщает, что загрузил сцену
+    [Server]
+    private void StartMatchTimer()
+    {
+        _matchTimeRemaining = matchDuration;
+        _timerRunning = true;
+    }
+
     public void OnServerReceivedClientSceneLoaded()
     {
         if (!NetworkServer.active) return;
@@ -301,10 +298,9 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
         _clientsSceneLoadedCount++;
         Debug.Log($"Clients loaded scene: {_clientsSceneLoadedCount}/{_players.Count}");
 
-        // Ждём, пока все загрузятся
-        if (_clientsSceneLoadedCount >= _players.Count && CanAssignRoles())
+        if (_clientsSceneLoadedCount >= _players.Count && CanStartGame())
         {
-            AssignPlayerRoles();
+            AssignPlayerTeams();
             StartCoroutine(StartGameWithDelay());
         }
     }
@@ -317,44 +313,48 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
 
     private void HandlePlayerStateChanged(PlayerState.State newState)
     {
-        if (!_gameInProgress || !NetworkServer.active) return;
-
-        if (newState == PlayerState.State.Dead)
-        {
-            Debug.Log("Player died, checking win conditions");
-            CheckWinConditions();
-        }
+        // No longer check win conditions on death — kills are tracked explicitly
     }
 
+    #endregion
+
+    #region Kill Tracking & Win Conditions
+
+    [Server]
+    public void OnPlayerKilled(Team killerTeam)
+    {
+        if (!_gameInProgress) return;
+
+        if (killerTeam == Team.Red)
+            _redTeamKills++;
+        else if (killerTeam == Team.Blue)
+            _blueTeamKills++;
+
+        CheckWinConditions();
+    }
+
+    [Server]
     private void CheckWinConditions()
     {
-        if (!_gameInProgress || _currentGameState != GameState.InProgress || !NetworkServer.active) return;
+        if (!_gameInProgress || _currentGameState != GameState.InProgress) return;
 
-        var aliveRoles = _playerRoles.Where(r => r.Player.IsAlive).ToList();
+        if (_redTeamKills >= killsToWin)
+            EndGame("Red Team");
+        else if (_blueTeamKills >= killsToWin)
+            EndGame("Blue Team");
+    }
 
-        bool sheriffAlive = aliveRoles.Any(r => r.CurrentRole == RoleType.Sheriff);
-        bool anyOutlawAlive = aliveRoles.Any(r => r.CurrentRole == RoleType.Outlaw);
-        bool anyRenegadeAlive = aliveRoles.Any(r => r.CurrentRole == RoleType.Renegade);
+    [Server]
+    private void EndGameByTimeout()
+    {
+        if (!_gameInProgress) return;
 
-        // Check Renegade victory first (must be alone)
-        if (aliveRoles.Count == 1 && anyRenegadeAlive)
-        {
-            EndGame("Renegade");
-            return;
-        }
-
-        // Check Sheriff death (Outlaws and Renegades win)
-        if (!sheriffAlive)
-        {
-            EndGame("Outlaws");
-            return;
-        }
-
-        // Check Sheriff victory (no Outlaws or Renegades left)
-        if (!anyOutlawAlive && !anyRenegadeAlive)
-        {
-            EndGame("Sheriff");
-        }
+        if (_redTeamKills > _blueTeamKills)
+            EndGame("Red Team");
+        else if (_blueTeamKills > _redTeamKills)
+            EndGame("Blue Team");
+        else
+            EndGame("Draw");
     }
 
     private void EndGame(string winningTeam)
@@ -363,24 +363,28 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
 
         _currentGameState = GameState.Ended;
         _gameInProgress = false;
+        _timerRunning = false;
 
         Debug.Log($"Game ended. Winner: {winningTeam}");
 
-        // Collect all player roles for the end game display
-        List<PlayerRoleInfo> allPlayerRoles = new();
-        foreach (var playerRole in _playerRoles)
+        List<PlayerMatchStat> allStats = new();
+        foreach (var playerTeam in _playerTeams)
         {
-            if (playerRole.Player)
+            PlayerState playerState = playerTeam.GetComponent<PlayerState>();
+            PlayerStats playerStats = playerTeam.GetComponent<PlayerStats>();
+            if (playerState)
             {
-                allPlayerRoles.Add(new PlayerRoleInfo
+                allStats.Add(new PlayerMatchStat
                 {
-                    playerName = playerRole.Player.PlayerNickname,
-                    role = playerRole.CurrentRole
+                    playerName = playerState.PlayerNickname,
+                    team = playerTeam.CurrentTeam,
+                    kills = playerStats ? playerStats.Kills : 0,
+                    deaths = playerStats ? playerStats.Deaths : 0
                 });
             }
         }
 
-        NetworkGameEvents.Instance?.RpcGameOver(winningTeam, allPlayerRoles.ToArray());
+        NetworkGameEvents.Instance?.RpcGameOver(winningTeam, allStats.ToArray());
     }
 
     private void ResetGameState()
@@ -388,13 +392,56 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
         _currentGameState = GameState.Waiting;
         _gameInProgress = false;
         _gameInitialized = false;
+        _timerRunning = false;
         _clientsSceneLoadedCount = 0;
+        _redTeamKills = 0;
+        _blueTeamKills = 0;
         _players.Clear();
-        _playerRoles.Clear();
+        _playerTeams.Clear();
         _playerStableIndices.Clear();
         _nextPlayerIndex = 0;
 
         Debug.Log("Game state reset");
+    }
+
+    #endregion
+
+    #region Spawn Points
+
+    public Transform GetTeamSpawnPoint(Team team)
+    {
+        var points = team == Team.Red ? _redSpawnPoints : _blueSpawnPoints;
+        if (points.Count == 0)
+        {
+            // Fallback: use any available spawn point
+            var allPoints = _redSpawnPoints.Concat(_blueSpawnPoints).ToList();
+            if (allPoints.Count > 0)
+                return allPoints[Random.Range(0, allPoints.Count)].transform;
+
+            Debug.LogWarning("No team spawn points found! Using world origin.");
+            return null;
+        }
+
+        return points[Random.Range(0, points.Count)].transform;
+    }
+
+    #endregion
+
+    #region SyncVar Hooks
+
+    private void OnMatchTimeChanged(float oldTime, float newTime)
+    {
+        UIManager.Instance?.UpdateMatchTimer(newTime);
+    }
+
+    private void OnRedKillsChanged(int oldKills, int newKills)
+    {
+        UIManager.Instance?.UpdateTeamScores(_redTeamKills, _blueTeamKills);
+    }
+
+    private void OnBlueKillsChanged(int oldKills, int newKills)
+    {
+        UIManager.Instance?.UpdateTeamScores(_redTeamKills, _blueTeamKills);
     }
 
     #endregion
@@ -405,23 +452,27 @@ public class GameManager : MonoBehaviour // <-- Важно: NetworkBehaviour!
     public GameState CurrentGameState => _currentGameState;
     public int PlayerCount => _players.Count;
     public int AlivePlayerCount => _players.Count(p => p.IsAlive);
+    public int RedTeamKills => _redTeamKills;
+    public int BlueTeamKills => _blueTeamKills;
 
     public List<PlayerState> GetAlivePlayers()
     {
         return _players.Where(p => p.IsAlive).ToList();
     }
 
-    public List<PlayerRole> GetPlayersWithRole(RoleType role)
+    public List<PlayerTeam> GetPlayersOnTeam(Team team)
     {
-        return _playerRoles.Where(r => r.CurrentRole == role).ToList();
+        return _playerTeams.Where(t => t.CurrentTeam == team).ToList();
     }
 
     #endregion
 }
 
 [System.Serializable]
-public struct PlayerRoleInfo
+public struct PlayerMatchStat
 {
     public string playerName;
-    public RoleType role;
+    public Team team;
+    public int kills;
+    public int deaths;
 }

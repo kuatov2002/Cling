@@ -5,7 +5,7 @@ using UnityEngine;
 public class PlayerVisual : NetworkBehaviour
 {
     [SerializeField] private TextMeshPro nickname;
-    
+
     [SyncVar(hook = nameof(OnNicknameChanged))]
     private string playerNickname = "";
 
@@ -22,6 +22,18 @@ public class PlayerVisual : NetworkBehaviour
     public void SetPlayerNickname(string newNickname)
     {
         playerNickname = newNickname;
+    }
+
+    public void SetTeamColor(Team team)
+    {
+        if (nickname == null) return;
+
+        nickname.color = team switch
+        {
+            Team.Red => new Color(1f, 0.3f, 0.3f),
+            Team.Blue => new Color(0.3f, 0.5f, 1f),
+            _ => Color.white
+        };
     }
 
     void OnNicknameChanged(string oldNickname, string newNickname)

@@ -3,26 +3,29 @@ using UnityEngine;
 
 public class AlucardBullet : Bullet
 {
-    private uint _ownerNetId;
-    private float _healAmount;
-    
-    
-    [ClientRpc]
-    public void RpcInitialize(Vector3 dir, float dmg, uint ownerNetId, float heal)
+    [SyncVar] private float _healAmount;
+
+    public void Initialize(Vector3 dir, float dmg, uint ownerNetId, float heal)
     {
-        _direction = dir.normalized;
-        _damage = dmg;
-        _ownerNetId = ownerNetId;
+        base.Initialize(dir, dmg, ownerNetId);
         _healAmount = heal;
     }
-    
+
     [Server]
     protected override void ApplyDamage(IDamageable target)
     {
         if (target != null)
         {
-            target.TakeDamage(_damage);
-                    
+            // Apply damage with kill attribution
+            if (target is PlayerHealth playerHealth)
+            {
+                playerHealth.TakeDamageFrom(_damage, _ownerNetId);
+            }
+            else
+            {
+                target.TakeDamage(_damage);
+            }
+
             // Heal the owner
             if (NetworkServer.spawned.TryGetValue(_ownerNetId, out NetworkIdentity ownerIdentity))
             {

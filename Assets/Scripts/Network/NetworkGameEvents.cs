@@ -22,14 +22,6 @@ public class NetworkGameEvents : NetworkBehaviour
         Debug.Log("Server: NetworkGameEvents started");
     }
 
-    // === RPC для клиентов ===
-
-    [ClientRpc]
-    public void RpcRolesAssigned()
-    {
-        Debug.Log("All roles have been assigned!");
-    }
-
     [ClientRpc]
     public void RpcGameInitialized()
     {
@@ -37,9 +29,15 @@ public class NetworkGameEvents : NetworkBehaviour
     }
 
     [ClientRpc]
-    public void RpcGameOver(string winningTeam, PlayerRoleInfo[] playerRoles)
+    public void RpcGameOver(string winningTeam, PlayerMatchStat[] playerStats)
     {
         Debug.Log($"{winningTeam} have won the game!");
-        UIManager.Instance?.GameoverWithRoles($"{winningTeam} have won the game!", playerRoles);
+        UIManager.Instance?.GameoverWithStats($"{winningTeam} wins!", playerStats);
+    }
+
+    [ClientRpc]
+    public void RpcPlayerKilled(string killerName, string victimName)
+    {
+        UIManager.Instance?.ShowNotification($"{killerName} eliminated {victimName}");
     }
 }

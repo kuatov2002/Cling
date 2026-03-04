@@ -6,10 +6,11 @@ public class Bullet : NetworkBehaviour
     protected float speed = 900f;
     protected float lifeTime = 3f;
 
-    protected float _damage;
-    protected Vector3 _direction;
-    
-    [SerializeField] protected ParticleSystem hitEffectPrefab; // Префаб эффекта попадания
+    [SyncVar] protected float _damage;
+    [SyncVar] protected Vector3 _direction;
+    [SyncVar] protected uint _ownerNetId;
+
+    [SerializeField] protected ParticleSystem hitEffectPrefab;
 
     public override void OnStartServer()
     {
@@ -22,10 +23,11 @@ public class Bullet : NetworkBehaviour
         NetworkServer.Destroy(gameObject);
     }
 
-    public void Initialize(Vector3 dir, float dmg)
+    public virtual void Initialize(Vector3 dir, float dmg, uint ownerNetId = 0)
     {
         _direction = dir.normalized;
         _damage = dmg;
+        _ownerNetId = ownerNetId;
     }
 
     protected virtual void Update()
@@ -38,13 +40,15 @@ public class Bullet : NetworkBehaviour
         {
             if (Physics.Raycast(start, _direction, out RaycastHit hit, moveDistance))
             {
+                // Skip friendly targets (no friendly fire)
+                if (IsFriendlyTarget(hit.collider))
+                    return;
+
                 var target = hit.collider.GetComponent<IDamageable>();
 
                 if (target != null)
                 {
-                    // Создаем эффект локально на сервере (для хоста)
                     PlayHitEffectLocal(hit.point);
-                    // Отправляем RPC клиентам
                     RpcPlayHitEffect(hit.point);
                     ApplyDamage(target);
                 }
@@ -54,6 +58,29 @@ public class Bullet : NetworkBehaviour
         }
 
         transform.position = end;
+    }
+
+    [Server]
+    private bool IsFriendlyTarget(Collider targetCollider)
+    {
+        if (_ownerNetId == 0) return false;
+
+        var targetTeam = targetCollider.GetComponent<PlayerTeam>();
+        if (targetTeam == null) return false;
+
+        Team ownerTeam = GetOwnerTeam();
+        return ownerTeam != Team.None && targetTeam.CurrentTeam == ownerTeam;
+    }
+
+    [Server]
+    protected Team GetOwnerTeam()
+    {
+        if (_ownerNetId != 0 &&
+            NetworkServer.spawned.TryGetValue(_ownerNetId, out NetworkIdentity ownerIdentity))
+        {
+            return ownerIdentity.GetComponent<PlayerTeam>()?.CurrentTeam ?? Team.None;
+        }
+        return Team.None;
     }
 
     [Server]
@@ -77,7 +104,14 @@ public class Bullet : NetworkBehaviour
     [Server]
     protected virtual void ApplyDamage(IDamageable target)
     {
-        target?.TakeDamage(_damage);
+        if (target is PlayerHealth playerHealth)
+        {
+            playerHealth.TakeDamageFrom(_damage, _ownerNetId);
+        }
+        else
+        {
+            target?.TakeDamage(_damage);
+        }
         DestroySelf();
     }
 }

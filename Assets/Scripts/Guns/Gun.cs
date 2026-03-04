@@ -9,24 +9,24 @@ public class Gun : NetworkBehaviour
     [SerializeField] private float cooldown = 0.5f;
     [SerializeField] protected Transform gunTransform;
     [SerializeField] private int maxBulletAmount = 6;
-    
+
     [SyncVar(hook = nameof(OnLastFireTimeChanged))]
     protected float LastFireTime = -Mathf.Infinity;
-    
+
     [FormerlySerializedAs("BulletAmount")]
     [SyncVar(hook = nameof(OnBulletAmountChanged))]
     [SerializeField] protected int bulletAmount = 1;
-    
+
     private bool _isCharged = false;
     private Camera _playerCamera;
     private float _lastReportedProgress = -1f;
     private PlayerInventory _playerInventory;
-    private AmmoShop _currentAmmoShop; // Reference to current ammo shop
+    private AmmoShop _currentAmmoShop;
 
     private void Start()
     {
         _playerInventory = GetComponent<PlayerInventory>();
-        
+
         if (isLocalPlayer)
         {
             StartCoroutine(CooldownUIRoutine());
@@ -34,13 +34,11 @@ public class Gun : NetworkBehaviour
         }
     }
 
-    // Method to set the current ammo shop (called by AmmoShop)
     public void SetCurrentAmmoShop(AmmoShop ammoShop)
     {
         _currentAmmoShop = ammoShop;
     }
 
-    // Method to clear the current ammo shop (called by AmmoShop)
     public void ClearCurrentAmmoShop()
     {
         _currentAmmoShop = null;
@@ -57,15 +55,13 @@ public class Gun : NetworkBehaviour
         }
     }
 
-    
     [Command]
     public void CmdAddAmmo()
     {
         if (bulletAmount >= maxBulletAmount) return;
-        
-        // Get price from current ammo shop
-        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 2; // Default to 1 if no shop
-        
+
+        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 2;
+
         if (_playerInventory && _playerInventory.Money >= ammoCost)
         {
             _playerInventory.SpendMoney(ammoCost);
@@ -75,14 +71,13 @@ public class Gun : NetworkBehaviour
 
     public bool CanAddAmmo()
     {
-        // Get price from current ammo shop
-        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 2; // Default to 1 if no shop
-        
-        return bulletAmount < maxBulletAmount && 
-               _playerInventory && 
+        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 2;
+
+        return bulletAmount < maxBulletAmount &&
+               _playerInventory &&
                _playerInventory.Money >= ammoCost;
     }
-    
+
     private System.Collections.IEnumerator CooldownUIRoutine()
     {
         while (true)
@@ -105,24 +100,24 @@ public class Gun : NetworkBehaviour
         _playerCamera = Camera.main;
         UpdateBulletUI();
     }
-    
+
     public bool Charge()
     {
         if ((float)NetworkTime.time - LastFireTime < cooldown || bulletAmount <= 0) return false;
         _isCharged = true;
         return true;
     }
-    
+
     public void CancelCharge()
     {
         _isCharged = false;
     }
-    
+
     [Client]
     public bool Fire()
     {
         if (!_isCharged || bulletAmount <= 0) return false;
-        
+
         Vector3 shootDirection = GetShootDirection();
         CmdFire(shootDirection);
         _isCharged = false;
@@ -132,7 +127,7 @@ public class Gun : NetworkBehaviour
     private Vector3 GetShootDirection()
     {
         Ray ray = _playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0f));
-        
+
         Vector3 targetPoint;
         if (Physics.Raycast(ray, out RaycastHit hit, 300f))
         {
@@ -142,7 +137,7 @@ public class Gun : NetworkBehaviour
         {
             targetPoint = ray.origin + ray.direction * 300f;
         }
-        
+
         Vector3 direction = (targetPoint - gunTransform.position).normalized;
         return direction;
     }
@@ -151,30 +146,31 @@ public class Gun : NetworkBehaviour
     protected virtual void CmdFire(Vector3 shootDirection)
     {
         if (bulletAmount <= 0) return;
-        
+
         LastFireTime = (float)NetworkTime.time;
         bulletAmount--;
-        
+
         GameObject bullet = Instantiate(
-            bulletPrefab, 
-            gunTransform.position, 
+            bulletPrefab,
+            gunTransform.position,
             Quaternion.LookRotation(shootDirection)
         );
-        NetworkServer.Spawn(bullet);
 
         Bullet bulletComponent = bullet.GetComponent<Bullet>();
         if (bulletComponent)
         {
-            // Инициализируем сразу на сервере — пуля начнёт движение сразу
-            bulletComponent.Initialize(shootDirection, damage);
+            // Initialize BEFORE Spawn so SyncVars are included in spawn message
+            bulletComponent.Initialize(shootDirection, damage, netId);
         }
+
+        NetworkServer.Spawn(bullet);
     }
 
     private void OnLastFireTimeChanged(float oldVal, float newVal)
     {
         _lastReportedProgress = -1f;
     }
-    
+
     private void OnBulletAmountChanged(int oldAmount, int newAmount)
     {
         if (isLocalPlayer)
@@ -182,7 +178,7 @@ public class Gun : NetworkBehaviour
             UpdateBulletUI();
         }
     }
-    
+
     private void UpdateBulletUI()
     {
         if (UIManager.Instance)

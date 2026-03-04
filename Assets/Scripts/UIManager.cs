@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,10 +6,13 @@ using UnityEngine.UI;
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance;
-    [SerializeField] private List<PlayerRoleMapping> playerRoleMappings = new List<PlayerRoleMapping>();
+
+    [Header("Game Over")]
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI gameOverText;
-    [SerializeField] private TextMeshProUGUI playerRolesText;
+    [SerializeField] private TextMeshProUGUI playerStatsText;
+
+    [Header("HUD")]
     [SerializeField] private Image gunCooldown;
     [SerializeField] private CardManager[] slotsUI;
     [SerializeField] private TextMeshProUGUI bulletCounts;
@@ -18,7 +20,11 @@ public class UIManager : MonoBehaviour
     [SerializeField] TextMeshProUGUI interactText;
     [SerializeField] private NotificationSystem notificationSystem;
     [SerializeField] private AbilityUI abilityUI;
-    
+
+    [Header("Match Info")]
+    [SerializeField] private TextMeshProUGUI matchTimerText;
+    [SerializeField] private TextMeshProUGUI teamScoreText;
+
     private bool _cursorLocked;
     [SerializeField] private KeyCode lockKeyCode = KeyCode.LeftAlt;
 
@@ -26,7 +32,7 @@ public class UIManager : MonoBehaviour
 
     [SerializeField] private GameObject menuUI;
     [SerializeField] private GameObject hud;
-    
+
     private void Awake()
     {
         if (Instance && Instance != this)
@@ -37,19 +43,19 @@ public class UIManager : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        
+
         if (gameOverPanel) gameOverPanel.SetActive(false);
-        
+
         if (notificationSystem == null)
         {
             notificationSystem = GetComponent<NotificationSystem>();
         }
-        
+
         if (abilityUI == null)
         {
             abilityUI = GetComponent<AbilityUI>();
         }
-        
+
         RoomManager.HostStopped += OnNetworkStopped;
         RoomManager.ClientStopped += OnNetworkStopped;
         RoomManager.GameStarted += OnGameStarted;
@@ -74,56 +80,64 @@ public class UIManager : MonoBehaviour
         if (hud) hud.SetActive(_uiState == UIState.HUD);
     }
 
-    public void OnRoleChanged(RoleType newRole)
+    #region Match Info
+
+    public void UpdateMatchTimer(float timeRemaining)
     {
-        foreach (var roleMapping in playerRoleMappings)
+        if (matchTimerText)
         {
-            roleMapping.gameObject.SetActive(roleMapping.playerRole == newRole);
+            int minutes = Mathf.FloorToInt(timeRemaining / 60f);
+            int seconds = Mathf.FloorToInt(timeRemaining % 60f);
+            matchTimerText.text = $"{minutes:00}:{seconds:00}";
+            matchTimerText.color = timeRemaining < 30f ? Color.red : Color.white;
         }
     }
 
-    public void GameoverWithRoles(string gameoverText, PlayerRoleInfo[] playerRoles)
+    public void UpdateTeamScores(int redKills, int blueKills)
     {
-        gameOverPanel.SetActive(true);
-        gameOverText.text = gameoverText;
-        
-        if (playerRolesText && playerRoles != null)
+        if (teamScoreText)
         {
-            string rolesText = "\n\nPlayer Roles:\n";
-            foreach (var playerRole in playerRoles)
+            teamScoreText.text = $"<color=red>{redKills}</color> - <color=#4488FF>{blueKills}</color>";
+        }
+    }
+
+    #endregion
+
+    #region Game Over
+
+    public void GameoverWithStats(string gameoverText, PlayerMatchStat[] playerStats)
+    {
+        if (gameOverPanel) gameOverPanel.SetActive(true);
+        if (this.gameOverText) this.gameOverText.text = gameoverText;
+
+        if (playerStatsText && playerStats != null)
+        {
+            string statsText = "\n";
+            foreach (var stat in playerStats)
             {
-                string roleDisplayName = GetRoleDisplayName(playerRole.role);
-                rolesText += $"{playerRole.playerName} - {roleDisplayName}\n";
+                string teamColor = stat.team == Team.Red ? "red" : "#4488FF";
+                statsText += $"<color={teamColor}>{stat.playerName}</color> — K:{stat.kills} D:{stat.deaths}\n";
             }
 
-            playerRolesText.text = rolesText;
+            playerStatsText.text = statsText;
         }
-        
+
         LockCursor(false);
     }
 
-    private string GetRoleDisplayName(RoleType role)
-    {
-        return role switch
-        {
-            RoleType.Sheriff => "Sheriff",
-            RoleType.Deputy => "Deputy",
-            RoleType.Outlaw => "Outlaw",
-            RoleType.Renegade => "Renegade",
-            _ => "Unknown"
-        };
-    }
+    #endregion
+
+    #region Network Events
 
     private void OnNetworkStopped()
     {
         if (gameOverPanel && gameOverPanel.activeSelf)
         {
             gameOverPanel.SetActive(false);
-            gameOverText.text = "";
-            if (playerRolesText) playerRolesText.text = "";
+            if (gameOverText) gameOverText.text = "";
+            if (playerStatsText) playerStatsText.text = "";
         }
 
-        OnRoleChanged(RoleType.None);
         _uiState = UIState.Menu;
         UpdateUIState();
         LockCursor(false);
@@ -134,6 +148,10 @@ public class UIManager : MonoBehaviour
         _uiState = UIState.HUD;
         UpdateUIState();
     }
+
+    #endregion
+
+    #region Cursor
 
     private void LockCursor(bool locked)
     {
@@ -150,6 +168,10 @@ public class UIManager : MonoBehaviour
             _cursorLocked = false;
         }
     }
+
+    #endregion
+
+    #region Gun UI
 
     private float _lastFill = -1f;
 
@@ -168,9 +190,9 @@ public class UIManager : MonoBehaviour
         if (bulletCounts)
         {
             bulletCounts.text = $"{currentBullets} / {maxBullets}";
-            
+
             float percentage = (float)currentBullets / maxBullets;
-            
+
             if (percentage <= 0.25f)
             {
                 bulletCounts.color = Color.red;
@@ -185,6 +207,10 @@ public class UIManager : MonoBehaviour
             }
         }
     }
+
+    #endregion
+
+    #region Inventory UI
 
     public void UpdateMoney(int amount)
     {
@@ -206,11 +232,11 @@ public class UIManager : MonoBehaviour
     {
         return interactText.text;
     }
-    
+
     public void UpdateInventoryUI(BaseItem[] slots, int activeItemIndex = -1)
     {
         if (slots == null || slotsUI == null) return;
-    
+
         for (int i = 0; i < slots.Length && i < slotsUI.Length; i++)
         {
             if (slots[i])
@@ -221,11 +247,15 @@ public class UIManager : MonoBehaviour
             {
                 slotsUI[i].UnSetItem();
             }
-            
+
             slotsUI[i].SetActive(i == activeItemIndex);
         }
     }
-    
+
+    #endregion
+
+    #region Notifications
+
     public void ShowNotification(string message)
     {
         if (notificationSystem != null)
@@ -233,8 +263,11 @@ public class UIManager : MonoBehaviour
             notificationSystem.ShowNotification(message);
         }
     }
-    
-    // Ability UI Methods
+
+    #endregion
+
+    #region Ability UI
+
     public void RegisterAbility(string abilityName, float cooldownDuration, Sprite icon)
     {
         if (abilityUI != null)
@@ -242,7 +275,7 @@ public class UIManager : MonoBehaviour
             abilityUI.RegisterAbility(abilityName, cooldownDuration, icon);
         }
     }
-    
+
     public void UnregisterAbility(string abilityName)
     {
         if (abilityUI != null)
@@ -250,7 +283,7 @@ public class UIManager : MonoBehaviour
             abilityUI.UnregisterAbility(abilityName);
         }
     }
-    
+
     public void StartAbilityCooldown(string abilityName)
     {
         if (abilityUI != null)
@@ -258,7 +291,7 @@ public class UIManager : MonoBehaviour
             abilityUI.StartCooldown(abilityName);
         }
     }
-    
+
     public bool IsAbilityReady(string abilityName)
     {
         if (abilityUI != null)
@@ -268,7 +301,7 @@ public class UIManager : MonoBehaviour
 
         return false;
     }
-    
+
     public float GetAbilityCooldownProgress(string abilityName)
     {
         if (abilityUI != null)
@@ -278,9 +311,7 @@ public class UIManager : MonoBehaviour
 
         return 1f;
     }
-    
-    // Add these methods to UIManager class
-    
+
     public void StartAbilityCooldownWithTime(string abilityName, float remainingTime)
     {
         if (abilityUI != null)
@@ -288,7 +319,7 @@ public class UIManager : MonoBehaviour
             abilityUI.StartCooldownWithTime(abilityName, remainingTime);
         }
     }
-    
+
     public void ForceAbilityReady(string abilityName)
     {
         if (abilityUI != null)
@@ -296,13 +327,8 @@ public class UIManager : MonoBehaviour
             abilityUI.ForceAbilityReady(abilityName);
         }
     }
-}
 
-[Serializable]
-public class PlayerRoleMapping
-{
-    public RoleType playerRole;
-    public GameObject gameObject; 
+    #endregion
 }
 
 public enum UIState

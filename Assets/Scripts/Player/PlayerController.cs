@@ -6,15 +6,15 @@ using Unity.Cinemachine;
 [RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : NetworkBehaviour
 {
-    [Header("Настройки движения")]
+    [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float gravity = -9.81f;
     [SerializeField] private Transform followTarget;
-    
-    [Header("Камера FreeLook")]
+
+    [Header("Camera & Shooting")]
     [SerializeField] private Gun gun;
     [SerializeField] private Animator animator;
-    
+
     private AutoAimSystem _autoAimSystem;
     private CharacterController _controller;
     private Vector3 _velocity;
@@ -22,7 +22,7 @@ public class PlayerMovement : NetworkBehaviour
     private CinemachineCamera[] _freeLookCam;
     private Vector2 _look;
     private bool _isAiming = false;
-    
+
     private static readonly int Speed = Animator.StringToHash("Speed");
     private static readonly int Strafe = Animator.StringToHash("Strafe");
     private static readonly int IsAiming = Animator.StringToHash("IsAiming");
@@ -31,7 +31,13 @@ public class PlayerMovement : NetworkBehaviour
     private float _animatorSpeed;
     private float _animatorStrafe;
 
-    // Синхронизируемые поля для анимаций
+    // Delta-based animation sync tracking
+    private float _lastSentSpeed;
+    private float _lastSentStrafe;
+    private bool _lastSentAiming;
+    private const float AnimSyncThreshold = 0.05f;
+
+    // Network synced animation values
     [SyncVar(hook = nameof(OnSpeedChanged))]
     private float _networkSpeed;
 
@@ -49,9 +55,9 @@ public class PlayerMovement : NetworkBehaviour
     public override void OnStartLocalPlayer()
     {
         if (!isLocalPlayer) return;
-        
+
         _autoAimSystem = GetComponent<AutoAimSystem>();
-        _freeLookCam = FindObjectsOfType<CinemachineCamera>();
+        _freeLookCam = FindObjectsByType<CinemachineCamera>(FindObjectsSortMode.None);
         _freeLookCam = _freeLookCam
             .OrderByDescending(cam => cam.Priority.Value)
             .ToArray();
@@ -84,7 +90,7 @@ public class PlayerMovement : NetworkBehaviour
             {
                 _isAiming = true;
                 _freeLookCam[0].gameObject.SetActive(false);
-                CmdSetAnimationValues(_animatorSpeed, _animatorStrafe, _isAiming);
+                SendAnimationUpdate(true);
             }
         }
 
@@ -94,7 +100,7 @@ public class PlayerMovement : NetworkBehaviour
             {
                 _isAiming = false;
                 _freeLookCam[0].gameObject.SetActive(true);
-                CmdSetAnimationValues(_animatorSpeed, _animatorStrafe, _isAiming);
+                SendAnimationUpdate(true);
             }
         }
 
@@ -103,7 +109,7 @@ public class PlayerMovement : NetworkBehaviour
             gun.CancelCharge();
             _isAiming = false;
             _freeLookCam[0].gameObject.SetActive(true);
-            CmdSetAnimationValues(_animatorSpeed, _animatorStrafe, _isAiming);
+            SendAnimationUpdate(true);
         }
     }
 
@@ -113,7 +119,7 @@ public class PlayerMovement : NetworkBehaviour
         _look.y = -Input.GetAxis("Mouse Y");
 
         Vector3 originalDirection = followTarget.forward;
-        
+
         if (_isAiming && _autoAimSystem)
         {
             Transform target = _autoAimSystem.GetBestTarget(originalDirection);
@@ -123,7 +129,7 @@ public class PlayerMovement : NetworkBehaviour
                 followTarget.rotation = Quaternion.LookRotation(adjustedDirection);
             }
         }
-        
+
         followTarget.rotation *= Quaternion.AngleAxis(_look.x, Vector3.up);
         followTarget.rotation *= Quaternion.AngleAxis(_look.y, Vector3.right);
 
@@ -169,12 +175,28 @@ public class PlayerMovement : NetworkBehaviour
         float targetStrafe = inputVector.x * moveSpeed;
         _animatorStrafe = Mathf.Lerp(_animatorStrafe, targetStrafe, Time.deltaTime * 5f);
 
-        // Отправляем на сервер, чтобы рассылалось всем
-        CmdSetAnimationValues(_animatorSpeed, _animatorStrafe, _isAiming);
+        // Delta-based sync: only send when values actually change
+        SendAnimationUpdate(false);
 
         _velocity.y += gravity * Time.deltaTime;
         Vector3 finalMovement = moveDirection + Vector3.up * _velocity.y;
         _controller.Move(finalMovement * Time.deltaTime);
+    }
+
+    private void SendAnimationUpdate(bool force)
+    {
+        bool changed = force ||
+            Mathf.Abs(_animatorSpeed - _lastSentSpeed) > AnimSyncThreshold ||
+            Mathf.Abs(_animatorStrafe - _lastSentStrafe) > AnimSyncThreshold ||
+            _isAiming != _lastSentAiming;
+
+        if (changed)
+        {
+            CmdSetAnimationValues(_animatorSpeed, _animatorStrafe, _isAiming);
+            _lastSentSpeed = _animatorSpeed;
+            _lastSentStrafe = _animatorStrafe;
+            _lastSentAiming = _isAiming;
+        }
     }
 
     [Command]
@@ -185,7 +207,6 @@ public class PlayerMovement : NetworkBehaviour
         _networkIsAiming = isAiming;
     }
 
-    // Хуки — вызываются у всех клиентов при изменении SyncVar
     private void OnSpeedChanged(float oldValue, float newValue)
     {
         animator?.SetFloat(Speed, newValue);
