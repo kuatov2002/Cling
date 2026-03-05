@@ -10,6 +10,7 @@ using Unity.Cinemachine;
 ///   - Server reconciliation with input replay
 ///   - Entity interpolation for remote players
 ///   - Adaptive jitter buffer
+///   - CS-style auto-fire with spread (delegated to Gun)
 ///   - Zero GC in hot paths
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
@@ -33,7 +34,7 @@ public class PlayerMovement : NetworkBehaviour
     // ── Animation hash IDs (cached, zero alloc) ────────────────────
     private static readonly int AnimSpeed = Animator.StringToHash("Speed");
     private static readonly int AnimStrafe = Animator.StringToHash("Strafe");
-    private static readonly int AnimIsAiming = Animator.StringToHash("IsAiming");
+    private static readonly int AnimIsFiring = Animator.StringToHash("IsFiring");
 
     // ── Components ────────────────────────────────────────────────
     private CharacterController _controller;
@@ -42,7 +43,6 @@ public class PlayerMovement : NetworkBehaviour
 
     // ── Movement state ────────────────────────────────────────────
     private Vector3 _velocity;
-    private bool _isAiming;
     private float _lookYaw;
     private float _lookPitch;
 
@@ -67,17 +67,24 @@ public class PlayerMovement : NetworkBehaviour
     [SyncVar(hook = nameof(OnStrafeChanged))]
     private float _networkStrafe;
 
-    [SyncVar(hook = nameof(OnIsAimingChanged))]
-    private bool _networkIsAiming;
+    [SyncVar(hook = nameof(OnIsFiringChanged))]
+    private bool _networkIsFiring;
 
     // ── Input caching (read once per frame) ───────────────────────
     private float _frameHorizontal;
     private float _frameVertical;
     private float _frameMouseX;
     private float _frameMouseY;
-    private bool _frameFire;
-    private bool _frameFireUp;
-    private bool _frameCancelFire;
+    private bool _frameFire; // level-triggered: true while Fire1 is held
+
+    // ── Server-side data for Gun spread calculation ────────────────
+    private float _lastInputSpeedSqr;
+
+    // ── Public API for Gun spread ─────────────────────────────────
+    /// <summary>Input-based speed squared from last processed input (for server spread calculation).</summary>
+    public float LastInputSpeedSqr => _lastInputSpeedSqr;
+    /// <summary>Max configured move speed (for spread normalization).</summary>
+    public float MaxMoveSpeed => moveSpeed;
 
     // ════════════════════════════════════════════════════════════════
     // LIFECYCLE
@@ -156,6 +163,7 @@ public class PlayerMovement : NetworkBehaviour
             SampleInput();
             ApplyMouseLook();
             ApplySmoothCorrection();
+            UpdateCrosshairUI();
         }
         else if (isClient && !isServer)
         {
@@ -171,13 +179,8 @@ public class PlayerMovement : NetworkBehaviour
         _frameMouseX = Input.GetAxis("Mouse X");
         _frameMouseY = Input.GetAxis("Mouse Y");
 
-        // Edge-triggered fire detection
-        if (Input.GetButtonDown("Fire1"))
-            _frameFire = true;
-        if (Input.GetButtonUp("Fire1"))
-            _frameFireUp = true;
-        if (Input.GetButtonDown("Fire2"))
-            _frameCancelFire = true;
+        // Level-triggered: true while Fire1 is held down
+        _frameFire = Input.GetButton("Fire1");
     }
 
     /// <summary>
@@ -189,8 +192,8 @@ public class PlayerMovement : NetworkBehaviour
         _lookYaw += _frameMouseX;
         _lookPitch -= _frameMouseY;
 
-        // Auto-aim adjustment
-        if (_isAiming && _autoAimSystem)
+        // Auto-aim adjustment (active while holding fire)
+        if (_frameFire && _autoAimSystem)
         {
             Vector3 forward = followTarget ? followTarget.forward : transform.forward;
             Transform target = _autoAimSystem.GetBestTarget(forward);
@@ -230,6 +233,16 @@ public class PlayerMovement : NetworkBehaviour
         }
     }
 
+    /// <summary>Update dynamic crosshair based on current spread.</summary>
+    private void UpdateCrosshairUI()
+    {
+        if (gun == null) return;
+        float inputSpeedSqr = (_frameHorizontal * _frameHorizontal + _frameVertical * _frameVertical)
+                               * moveSpeed * moveSpeed;
+        float spread = gun.GetCurrentSpreadAngle(inputSpeedSqr, moveSpeed, NetworkTickManager.Tick);
+        UIManager.Instance?.UpdateCrosshairSpread(spread);
+    }
+
     // ════════════════════════════════════════════════════════════════
     // CLIENT TICK (prediction)
     // ════════════════════════════════════════════════════════════════
@@ -246,14 +259,8 @@ public class PlayerMovement : NetworkBehaviour
         input.vertical = _frameVertical;
         input.lookYaw = _lookYaw;
         input.lookPitch = _lookPitch;
-        input.fire = _frameFire;
-        input.cancelFire = _frameCancelFire || _frameFireUp;
+        input.fireHeld = _frameFire;
         input.useItem = Input.GetKey(KeyCode.E);
-
-        // Clear edge-triggered flags (consumed)
-        _frameFire = false;
-        _frameFireUp = false;
-        _frameCancelFire = false;
 
         // ── Store input for replay ──────────────────────────────────
         _inputBuffer.Set(tick, in input);
@@ -271,7 +278,7 @@ public class PlayerMovement : NetworkBehaviour
         predicted.isGrounded = _controller.isGrounded;
         _stateBuffer.Set(tick, in predicted);
 
-        // ── Handle shooting (client-side) ───────────────────────────
+        // ── Handle shooting (CS-style auto-fire) ─────────────────────
         HandleShootingClient(in input);
 
         // ── Send input batch to server (last 3 inputs for redundancy) ──
@@ -290,29 +297,24 @@ public class PlayerMovement : NetworkBehaviour
     }
 
     /// <summary>
-    /// Handle charge/fire/cancel on the client side.
-    /// Actual shot validation happens on server.
+    /// CS-style auto-fire: while fireHeld, gun fires automatically at fire rate.
+    /// No charge phase, no aim mode switching.
     /// </summary>
     private void HandleShootingClient(in InputState input)
     {
         if (gun == null) return;
 
-        if (input.fire && !_isAiming)
-        {
-            if (gun.Charge())
-            {
-                _isAiming = true;
-                if (_freeLookCam != null && _freeLookCam.Length > 0 && _freeLookCam[0])
-                    _freeLookCam[0].gameObject.SetActive(false);
-            }
-        }
+        // Calculate input-based speed for spread
+        float inputSpeedSqr = (input.horizontal * input.horizontal + input.vertical * input.vertical)
+                               * moveSpeed * moveSpeed;
 
-        if (input.cancelFire && _isAiming)
+        if (input.fireHeld)
         {
-            gun.Fire();
-            _isAiming = false;
-            if (_freeLookCam != null && _freeLookCam.Length > 0 && _freeLookCam[0])
-                _freeLookCam[0].gameObject.SetActive(true);
+            gun.TryFireTick(input.tick, inputSpeedSqr, moveSpeed);
+        }
+        else
+        {
+            gun.TickNoFire(input.tick);
         }
     }
 
@@ -322,10 +324,10 @@ public class PlayerMovement : NetworkBehaviour
 
     // ── Anti-cheat ─────────────────────────────────────────────────
     [Header("Anti-Cheat")]
-    [SerializeField] private float moveSpeedTolerance = 1.15f; // 15% tolerance for network jitter
+    [SerializeField] private float moveSpeedTolerance = 1.15f;
     private Vector3 _prevServerPosition;
     private int _speedViolationCount;
-    private const int MaxSpeedViolations = 5; // strikes before corrective action
+    private const int MaxSpeedViolations = 5;
 
     /// <summary>Fixed 64 Hz server tick — process one input per player.</summary>
     private void OnServerTick(int tick)
@@ -333,18 +335,20 @@ public class PlayerMovement : NetworkBehaviour
         if (!isServer) return;
         if (!_controller || !_controller.enabled) return;
 
-        // Process queued inputs (may have multiple if packets arrived between ticks)
         while (_serverInputQueue.Count > 0)
         {
             InputState input = _serverInputQueue.Dequeue();
 
-            // Skip stale / duplicate inputs
             if (input.tick <= _serverLastProcessedTick) continue;
 
             _serverLastProcessedTick = input.tick;
 
             // ── Record position before movement (for speed validation) ──
             _prevServerPosition = transform.position;
+
+            // ── Cache input speed for Gun's server-side spread calc ──
+            _lastInputSpeedSqr = (input.horizontal * input.horizontal + input.vertical * input.vertical)
+                                  * moveSpeed * moveSpeed;
 
             // ── Authoritative movement ──────────────────────────────
             SimulateMovement(in input);
@@ -379,7 +383,7 @@ public class PlayerMovement : NetworkBehaviour
                 transform.rotation,
                 _networkSpeed,
                 _networkStrafe,
-                _networkIsAiming
+                _networkIsFiring
             );
         }
     }
@@ -392,14 +396,13 @@ public class PlayerMovement : NetworkBehaviour
 
         _networkSpeed = speed;
         _networkStrafe = strafe;
-        _networkIsAiming = _isAiming;
+        _networkIsFiring = input.fireHeld;
 
-        // Server/host: apply to own animator directly (hooks don't fire on server)
         if (animator)
         {
             animator.SetFloat(AnimSpeed, speed);
             animator.SetFloat(AnimStrafe, strafe);
-            animator.SetBool(AnimIsAiming, _networkIsAiming);
+            animator.SetBool(AnimIsFiring, _networkIsFiring);
         }
     }
 
@@ -433,7 +436,7 @@ public class PlayerMovement : NetworkBehaviour
 
         // ── Gravity ─────────────────────────────────────────────────
         if (_controller.isGrounded && _velocity.y < 0f)
-            _velocity.y = -2f; // small downward force to stay grounded
+            _velocity.y = -2f;
 
         _velocity.y += gravity * NetworkTickManager.TickDuration;
 
@@ -446,14 +449,9 @@ public class PlayerMovement : NetworkBehaviour
     // ANTI-CHEAT: MOVE SPEED VALIDATION (SERVER)
     // ════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Validate that player didn't move faster than allowed per tick.
-    /// If violation detected, snap back to previous position.
-    /// </summary>
     [Server]
     private void ValidateMoveSpeed()
     {
-        // Only check horizontal distance (vertical includes gravity/falling)
         Vector3 delta = transform.position - _prevServerPosition;
         delta.y = 0f;
         float distanceSq = delta.sqrMagnitude;
@@ -465,7 +463,6 @@ public class PlayerMovement : NetworkBehaviour
             _speedViolationCount++;
             if (_speedViolationCount >= MaxSpeedViolations)
             {
-                // Corrective action: snap back to previous valid position
                 Debug.LogWarning($"[AntiCheat] Player {netId} speed violation #{_speedViolationCount}. Snapping back.");
                 _controller.enabled = false;
                 transform.position = _prevServerPosition;
@@ -474,7 +471,6 @@ public class PlayerMovement : NetworkBehaviour
         }
         else
         {
-            // Decay violations over time (1 forgiven per valid tick)
             if (_speedViolationCount > 0) _speedViolationCount--;
         }
     }
@@ -483,14 +479,9 @@ public class PlayerMovement : NetworkBehaviour
     // NETWORK COMMANDS & RPCS
     // ════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Client → Server: send last 3 inputs for redundancy (handles packet loss).
-    /// Server deduplicates by tick number — only processes new inputs.
-    /// </summary>
     [Command(channel = Channels.Unreliable)]
     private void CmdSendInputBatch(InputState input0, InputState input1, InputState input2, byte count)
     {
-        // Process in chronological order, skip stale/duplicate inputs
         if (count >= 3 && input2.tick > _serverLastProcessedTick)
             EnqueueServerInput(in input2);
         if (count >= 2 && input1.tick > _serverLastProcessedTick)
@@ -499,7 +490,6 @@ public class PlayerMovement : NetworkBehaviour
             EnqueueServerInput(in input0);
     }
 
-    /// <summary>Enqueue a server input, preventing unbounded growth.</summary>
     private void EnqueueServerInput(in InputState input)
     {
         _serverInputQueue.Enqueue(input);
@@ -507,7 +497,6 @@ public class PlayerMovement : NetworkBehaviour
             _serverInputQueue.Dequeue();
     }
 
-    /// <summary>Server → Owning client: authoritative state for reconciliation.</summary>
     [TargetRpc(channel = Channels.Unreliable)]
     private void TargetRpcServerState(PlayerStateSnapshot serverState)
     {
@@ -515,61 +504,48 @@ public class PlayerMovement : NetworkBehaviour
         Reconcile(in serverState);
     }
 
-    /// <summary>Server → All non-owning clients: position snapshot for interpolation.</summary>
     [ClientRpc(channel = Channels.Unreliable, includeOwner = false)]
     private void RpcRemoteSnapshot(double serverTime, Vector3 position, Quaternion rotation,
-                                    float speed, float strafe, bool aiming)
+                                    float speed, float strafe, bool firing)
     {
         if (isLocalPlayer || isServer) return;
-        _snapshotBuffer.Add(serverTime, position, rotation, speed, strafe, aiming);
+        _snapshotBuffer.Add(serverTime, position, rotation, speed, strafe, firing);
     }
 
     // ════════════════════════════════════════════════════════════════
     // CLIENT RECONCILIATION
     // ════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Compare predicted state with server authority.
-    /// If diverged, snap + replay inputs to re-predict.
-    /// </summary>
     private void Reconcile(in PlayerStateSnapshot serverState)
     {
-        // Get our prediction at the server's tick
         if (!_stateBuffer.TryGet(serverState.tick, out PlayerStateSnapshot predicted))
-            return; // no prediction for that tick (too old)
+            return;
 
         float error = PlayerStateSnapshot.PositionError(in predicted, in serverState);
 
         if (error < reconciliationThreshold)
         {
-            // Prediction was accurate — no correction needed
             _lastProcessedTick = serverState.tick;
             return;
         }
 
-        // ── Correction needed ───────────────────────────────────────
-
         if (error < smoothCorrectionThreshold)
         {
-            // Small correction: accumulate offset, lerp it out visually
             _smoothCorrectionOffset += transform.position - serverState.position;
         }
 
-        // Snap to server authoritative position
         _controller.enabled = false;
         transform.position = serverState.position;
         _controller.enabled = true;
 
         _velocity = serverState.velocity;
 
-        // ── Replay all inputs from serverTick+1 to current tick ─────
         for (int t = serverState.tick + 1; t <= NetworkTickManager.Tick; t++)
         {
             if (_inputBuffer.TryGet(t, out InputState input))
             {
                 SimulateMovement(in input);
 
-                // Update predicted state buffer
                 PlayerStateSnapshot repredicted;
                 repredicted.tick = t;
                 repredicted.position = transform.position;
@@ -588,29 +564,23 @@ public class PlayerMovement : NetworkBehaviour
     // REMOTE PLAYER INTERPOLATION
     // ════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Interpolate remote player position between server snapshots.
-    /// Called every frame in Update() for smooth visual rendering.
-    /// </summary>
     private void InterpolateRemotePlayer()
     {
         double renderTime = NetworkTime.time - _snapshotBuffer.InterpolationDelay;
 
         if (_snapshotBuffer.Sample(renderTime, out Vector3 pos, out Quaternion rot,
-                                   out float speed, out float strafe, out bool aiming))
+                                   out float speed, out float strafe, out bool firing))
         {
             transform.SetPositionAndRotation(pos, rot);
 
-            // Update animator for remote player
             if (animator)
             {
                 animator.SetFloat(AnimSpeed, speed);
                 animator.SetFloat(AnimStrafe, strafe);
-                animator.SetBool(AnimIsAiming, aiming);
+                animator.SetBool(AnimIsFiring, firing);
             }
         }
 
-        // Prune old snapshots (keep last 1 second)
         _snapshotBuffer.Prune(renderTime - 1.0);
     }
 
@@ -630,10 +600,10 @@ public class PlayerMovement : NetworkBehaviour
             animator.SetFloat(AnimStrafe, newVal);
     }
 
-    private void OnIsAimingChanged(bool oldVal, bool newVal)
+    private void OnIsFiringChanged(bool oldVal, bool newVal)
     {
         if (!isLocalPlayer && animator)
-            animator.SetBool(AnimIsAiming, newVal);
+            animator.SetBool(AnimIsFiring, newVal);
     }
 
     // ════════════════════════════════════════════════════════════════

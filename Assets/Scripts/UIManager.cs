@@ -21,6 +21,9 @@ public class UIManager : MonoBehaviour
     [SerializeField] private NotificationSystem notificationSystem;
     [SerializeField] private AbilityUI abilityUI;
 
+    [Header("Crosshair")]
+    [SerializeField] private DynamicCrosshair dynamicCrosshair;
+
     [Header("Match Info")]
     [SerializeField] private TextMeshProUGUI matchTimerText;
     [SerializeField] private TextMeshProUGUI teamScoreText;
@@ -183,6 +186,11 @@ public class UIManager : MonoBehaviour
             gunCooldown.fillAmount = newFill;
             _lastFill = newFill;
         }
+    }
+
+    public void UpdateCrosshairSpread(float spreadDegrees)
+    {
+        if (dynamicCrosshair) dynamicCrosshair.SetSpread(spreadDegrees);
     }
 
     public void UpdateBulletCount(int currentBullets, int maxBullets)

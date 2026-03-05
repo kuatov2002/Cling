@@ -3,19 +3,41 @@ using Mirror;
 using UnityEngine;
 
 /// <summary>
-/// Hitscan weapon with lag-compensated server-side hit registration.
-/// Uses Mirror's LagCompensator for Valve-model rewind.
-/// Client sends shoot direction → server rewinds, raycasts, validates.
+/// CS-style automatic hitscan weapon with:
+///   - Tick-based fire rate (auto-fire while holding Fire1)
+///   - Spread system: base + movement + sustained fire inaccuracy
+///   - First shot accuracy (standing still, not recently fired)
+///   - Deterministic spread (same seed on client + server, zero sync needed)
+///   - Lag-compensated server-side hit registration
+///   - Zero GC in hot paths
 /// </summary>
 public class Gun : NetworkBehaviour
 {
     // ── Inspector ──────────────────────────────────────────────────
+    [Header("Base")]
     [SerializeField] protected float damage = 20f;
-    [SerializeField] private float cooldown = 0.5f;
     [SerializeField] protected Transform gunTransform;
     [SerializeField] private float maxRange = 300f;
     [SerializeField] private ParticleSystem hitEffectPrefab;
     [SerializeField] private BulletTracer tracerPrefab;
+
+    [Header("Fire Rate")]
+    [Tooltip("Ticks between shots. 6 @ 64Hz ≈ 600 RPM (AK-47 style).")]
+    [SerializeField] private int fireRateTicks = 6;
+
+    [Header("Spread / Accuracy")]
+    [Tooltip("Minimum spread in degrees when standing still.")]
+    [SerializeField] private float baseInaccuracy = 0.4f;
+    [Tooltip("Max additional spread from movement (degrees at full speed).")]
+    [SerializeField] private float moveInaccuracyMax = 4.0f;
+    [Tooltip("Degrees added per consecutive shot.")]
+    [SerializeField] private float fireInaccuracyPerShot = 0.6f;
+    [Tooltip("Maximum accumulated sustained fire spread (degrees).")]
+    [SerializeField] private float fireInaccuracyMax = 7.0f;
+    [Tooltip("Degrees per second of spread recovery when not firing.")]
+    [SerializeField] private float fireInaccuracyDecayRate = 8.0f;
+    [Tooltip("Seconds standing still before first-shot-accurate (0° spread).")]
+    [SerializeField] private float firstShotThreshold = 0.35f;
 
     [Header("Lag Compensation")]
     [SerializeField] private LayerMask hitLayerMask = -1;
@@ -25,14 +47,16 @@ public class Gun : NetworkBehaviour
     [SyncVar(hook = nameof(OnLastFireTimeChanged))]
     protected float LastFireTime = -Mathf.Infinity;
 
+    // ── Spread state (deterministic, computed independently on client + server) ──
+    private float _sustainedFireInaccuracy;
+    private int _lastFireTick;
+
     // ── Client state ──────────────────────────────────────────────
-    private bool _isCharged;
     private Camera _playerCamera;
     private float _lastReportedProgress = -1f;
 
     // ── Pooling ───────────────────────────────────────────────────
     private static NetworkPool<BulletTracer> _tracerPool;
-    // Hit effect pooling deferred (requires PooledParticle setup per prefab)
 
     // ── Pre-allocated for lag compensation (zero GC) ──────────────
     private static readonly List<LagCompensator> _lagCompensators = new List<LagCompensator>(8);
@@ -60,42 +84,153 @@ public class Gun : NetworkBehaviour
     }
 
     // ════════════════════════════════════════════════════════════════
-    // CLIENT API
+    // CLIENT API — TICK-DRIVEN AUTO-FIRE
     // ════════════════════════════════════════════════════════════════
 
-    public bool Charge()
-    {
-        if ((float)NetworkTime.time - LastFireTime < cooldown) return false;
-        _isCharged = true;
-        return true;
-    }
-
-    public void CancelCharge()
-    {
-        _isCharged = false;
-    }
-
+    /// <summary>
+    /// Called by PlayerController every tick while fireHeld == true.
+    /// Returns true if a shot was actually fired this tick.
+    /// </summary>
     [Client]
-    public bool Fire()
+    public bool TryFireTick(int currentTick, float inputSpeedSqr, float moveSpeedMax)
     {
-        if (!_isCharged) return false;
+        // Check fire rate
+        int ticksSinceLastFire = currentTick - _lastFireTick;
+        if (ticksSinceLastFire < fireRateTicks) return false;
 
+        // Calculate spread
+        float timeSinceLastShot = ticksSinceLastFire * NetworkTickManager.TickDuration;
+        float spreadAngle = CalculateSpreadAngle(inputSpeedSqr, moveSpeedMax, timeSinceLastShot);
+
+        // Get base direction from screen center
+        Vector3 baseDirection = GetShootDirection();
         Vector3 origin = gunTransform.position;
-        Vector3 direction = GetShootDirection();
 
-        // Send to server for authoritative validation
-        CmdFireHitscan(origin, direction);
+        // Apply spread with deterministic seed
+        uint seed = GenerateSeed(currentTick);
+        Vector3 spreadDirection = ApplySpreadToDirection(baseDirection, spreadAngle, seed);
+
+        // Send to server (server will independently calculate same spread)
+        CmdFireAutomatic(origin, baseDirection, currentTick);
 
         // Spawn local tracer immediately (responsive feel)
-        SpawnLocalTracer(origin, direction);
+        SpawnLocalTracer(origin, spreadDirection);
 
-        _isCharged = false;
+        // Update spread state
+        float decayed = Mathf.Max(0f, _sustainedFireInaccuracy - fireInaccuracyDecayRate * timeSinceLastShot);
+        _sustainedFireInaccuracy = Mathf.Min(decayed + fireInaccuracyPerShot, fireInaccuracyMax);
+        _lastFireTick = currentTick;
+
         return true;
+    }
+
+    /// <summary>
+    /// Called every tick when fireHeld == false. Spread decays implicitly
+    /// via timeSinceLastShot on next CalculateSpreadAngle call.
+    /// </summary>
+    public void TickNoFire(int currentTick)
+    {
+        // Decay is implicit — no state updates needed here
+    }
+
+    /// <summary>
+    /// Get current spread angle in degrees (for crosshair UI visualization).
+    /// </summary>
+    public float GetCurrentSpreadAngle(float inputSpeedSqr, float moveSpeedMax, int currentTick)
+    {
+        int ticksSinceLast = currentTick - _lastFireTick;
+        float timeSinceLastShot = ticksSinceLast * NetworkTickManager.TickDuration;
+        return CalculateSpreadAngle(inputSpeedSqr, moveSpeedMax, timeSinceLastShot);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // SPREAD CALCULATION (pure, deterministic)
+    // ════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Calculate total spread angle in degrees. Pure function — deterministic.
+    /// Used by both client (prediction) and server (authority).
+    /// </summary>
+    private float CalculateSpreadAngle(float inputSpeedSqr, float moveSpeedMax, float timeSinceLastShot)
+    {
+        // 1. Decay sustained fire inaccuracy based on time not firing
+        float decayedFireInaccuracy = _sustainedFireInaccuracy -
+                                       (fireInaccuracyDecayRate * timeSinceLastShot);
+        if (decayedFireInaccuracy < 0f) decayedFireInaccuracy = 0f;
+
+        // 2. Movement inaccuracy: proportional to speed ratio squared
+        float maxSpeedSqr = moveSpeedMax * moveSpeedMax;
+        float speedRatio = (maxSpeedSqr > 0.0001f)
+            ? Mathf.Clamp01(inputSpeedSqr / maxSpeedSqr)
+            : 0f;
+        float moveInaccuracy = moveInaccuracyMax * speedRatio;
+
+        // 3. First Shot Accuracy: standing still + enough time since last shot + no residual spray
+        bool isFirstShotAccurate = (inputSpeedSqr < 0.01f) &&
+                                    (timeSinceLastShot >= firstShotThreshold) &&
+                                    (decayedFireInaccuracy < 0.01f);
+
+        if (isFirstShotAccurate)
+            return 0f; // perfect accuracy
+
+        // 4. Total spread = base + movement + sustained fire
+        return baseInaccuracy + moveInaccuracy + decayedFireInaccuracy;
+    }
+
+    /// <summary>
+    /// Apply spread to a direction using a uniform cone distribution.
+    /// Uses deterministic hash-based RNG — zero GC, no System.Random.
+    /// </summary>
+    private static Vector3 ApplySpreadToDirection(Vector3 baseDirection, float spreadDegrees, uint seed)
+    {
+        if (spreadDegrees < 0.001f) return baseDirection.normalized;
+
+        // Hash-based deterministic random (xorshift32)
+        uint hash = seed;
+        hash ^= hash << 13;
+        hash ^= hash >> 17;
+        hash ^= hash << 5;
+        float rand1 = (hash & 0xFFFF) / 65535f; // 0..1
+
+        hash ^= hash << 13;
+        hash ^= hash >> 17;
+        hash ^= hash << 5;
+        float rand2 = (hash & 0xFFFF) / 65535f; // 0..1
+
+        // Uniform distribution within cone
+        float halfAngleRad = spreadDegrees * 0.5f * Mathf.Deg2Rad;
+        float angle = rand1 * halfAngleRad;
+        float rotation = rand2 * 2f * Mathf.PI;
+
+        // Build perpendicular frame
+        Vector3 dir = baseDirection.normalized;
+        Vector3 right = Vector3.Cross(Vector3.up, dir);
+        if (right.sqrMagnitude < 0.001f)
+            right = Vector3.Cross(Vector3.forward, dir);
+        right.Normalize();
+        Vector3 up = Vector3.Cross(dir, right);
+
+        // Apply deviation
+        float sinAngle = Mathf.Sin(angle);
+        Vector3 spread = dir * Mathf.Cos(angle) +
+                         right * (sinAngle * Mathf.Cos(rotation)) +
+                         up * (sinAngle * Mathf.Sin(rotation));
+
+        return spread.normalized;
+    }
+
+    /// <summary>Deterministic seed from netId + tick. Same on client and server.</summary>
+    private uint GenerateSeed(int tick)
+    {
+        return (uint)((netId * 1000003) ^ (tick * 7919));
     }
 
     /// <summary>Calculate aim direction from screen center raycast.</summary>
     private Vector3 GetShootDirection()
     {
+        if (_playerCamera == null) _playerCamera = Camera.main;
+        if (_playerCamera == null) return gunTransform.forward;
+
         Ray ray = _playerCamera.ScreenPointToRay(
             new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0f));
 
@@ -113,23 +248,46 @@ public class Gun : NetworkBehaviour
     }
 
     // ════════════════════════════════════════════════════════════════
-    // SERVER — HITSCAN WITH LAG COMPENSATION
+    // SERVER — HITSCAN WITH LAG COMPENSATION + SPREAD
     // ════════════════════════════════════════════════════════════════
 
     [Command]
-    protected virtual void CmdFireHitscan(Vector3 origin, Vector3 direction)
+    protected virtual void CmdFireAutomatic(Vector3 origin, Vector3 baseDirection, int clientTick)
     {
-        // ── Validate cooldown ───────────────────────────────────────
-        if ((float)NetworkTime.time - LastFireTime < cooldown * 0.9f) return;
-        LastFireTime = (float)NetworkTime.time;
+        // ── Validate fire rate ────────────────────────────────────────
+        int ticksSinceLastFire = clientTick - _lastFireTick;
+        if (ticksSinceLastFire < fireRateTicks - 1) return; // -1 tick tolerance for jitter
 
-        // ── Validate origin (anti-cheat: must be near gun) ──────────
+        // ── Validate origin (anti-cheat: must be near gun) ────────────
         float originDist = Vector3.Distance(origin, gunTransform.position);
         if (originDist > 3f)
         {
-            origin = gunTransform.position; // snap to server gun position
+            origin = gunTransform.position;
         }
-        direction = direction.normalized;
+        baseDirection = baseDirection.normalized;
+
+        // ── Server independently calculates spread ─────────────────────
+        // Use input-based speed: get from the player's last processed input
+        var playerMovement = GetComponent<PlayerMovement>();
+        float inputSpeedSqr = 0f;
+        float moveSpeedMax = 5f;
+        if (playerMovement != null)
+        {
+            inputSpeedSqr = playerMovement.LastInputSpeedSqr;
+            moveSpeedMax = playerMovement.MaxMoveSpeed;
+        }
+
+        float timeSinceLastShot = ticksSinceLastFire * NetworkTickManager.TickDuration;
+        float spreadAngle = CalculateSpreadAngle(inputSpeedSqr, moveSpeedMax, timeSinceLastShot);
+
+        uint seed = GenerateSeed(clientTick);
+        Vector3 spreadDirection = ApplySpreadToDirection(baseDirection, spreadAngle, seed);
+
+        // ── Update server spread state ─────────────────────────────────
+        float decayed = Mathf.Max(0f, _sustainedFireInaccuracy - fireInaccuracyDecayRate * timeSinceLastShot);
+        _sustainedFireInaccuracy = Mathf.Min(decayed + fireInaccuracyPerShot, fireInaccuracyMax);
+        _lastFireTick = clientTick;
+        LastFireTime = (float)NetworkTime.time;
 
         // ── Lag compensation: estimate client's perceived time ──────
         double estimatedTime = LagCompensation.EstimateTime(
@@ -142,21 +300,14 @@ public class Gun : NetworkBehaviour
         FindAllLagCompensators(_lagCompensators);
 
         // ── Rewind & Raycast ────────────────────────────────────────
-        // We use the BoundsCheck approach: sample each target's historical position,
-        // then do a single server-side raycast from corrected origin.
-        // For more precision, we temporarily move colliders to historical positions.
-
-        // Store original positions to restore
         var originalPositions = new (LagCompensator comp, Vector3 pos, Quaternion rot)[_lagCompensators.Count];
         int targetCount = 0;
 
         for (int i = 0; i < _lagCompensators.Count; i++)
         {
             var lc = _lagCompensators[i];
-            // Skip self
             if (lc.netIdentity == netIdentity) continue;
 
-            // Skip teammates
             var targetTeam = lc.GetComponent<PlayerTeam>();
             var ownerTeam = GetComponent<PlayerTeam>();
             if (targetTeam && ownerTeam &&
@@ -164,19 +315,16 @@ public class Gun : NetworkBehaviour
                 targetTeam.CurrentTeam == ownerTeam.CurrentTeam)
                 continue;
 
-            // Sample historical position
             if (lc.Sample(connectionToClient, out Capture3D sample))
             {
                 originalPositions[targetCount] = (lc, lc.transform.position, lc.transform.rotation);
                 targetCount++;
-
-                // Temporarily move to historical position
                 lc.transform.position = sample.position;
             }
         }
 
-        // ── Perform server-side raycast ─────────────────────────────
-        bool didHit = Physics.Raycast(origin, direction, out RaycastHit hitInfo, maxRange, hitLayerMask);
+        // ── Perform server-side raycast with spread direction ─────────
+        bool didHit = Physics.Raycast(origin, spreadDirection, out RaycastHit hitInfo, maxRange, hitLayerMask);
 
         // ── Restore all positions ───────────────────────────────────
         for (int i = 0; i < targetCount; i++)
@@ -190,24 +338,19 @@ public class Gun : NetworkBehaviour
         if (didHit)
         {
             Vector3 hitPoint = hitInfo.point;
-
-            // Try to get damageable
             var damageable = hitInfo.collider.GetComponentInParent<IDamageable>();
             if (damageable != null)
             {
                 OnServerHit(damageable, hitInfo, damage);
-                RpcOnHit(hitPoint, origin, direction);
+                RpcOnHit(hitPoint, origin, spreadDirection);
                 return;
             }
-
-            // Hit non-damageable (wall, etc.)
-            RpcOnMiss(hitPoint, origin, direction);
+            RpcOnMiss(hitPoint, origin, spreadDirection);
         }
         else
         {
-            // Complete miss
-            Vector3 endPoint = origin + direction * maxRange;
-            RpcOnMiss(endPoint, origin, direction);
+            Vector3 endPoint = origin + spreadDirection * maxRange;
+            RpcOnMiss(endPoint, origin, spreadDirection);
         }
     }
 
@@ -231,7 +374,6 @@ public class Gun : NetworkBehaviour
     /// <summary>Collect all active LagCompensators in the scene (zero-alloc reusable list).</summary>
     private void FindAllLagCompensators(List<LagCompensator> results)
     {
-        // Use NetworkServer.spawned to iterate active players
         foreach (var kvp in NetworkServer.spawned)
         {
             if (kvp.Value == null) continue;
@@ -245,25 +387,20 @@ public class Gun : NetworkBehaviour
     // CLIENT RPCS — VISUAL EFFECTS
     // ════════════════════════════════════════════════════════════════
 
-    /// <summary>Hit confirmed — show impact effect + tracer on all clients.</summary>
     [ClientRpc]
     private void RpcOnHit(Vector3 hitPoint, Vector3 origin, Vector3 direction)
     {
-        // Spawn hit effect
         if (hitEffectPrefab)
         {
-            // TODO: pool hit effects
             Instantiate(hitEffectPrefab, hitPoint, Quaternion.LookRotation(-direction));
         }
 
-        // Spawn tracer (non-owner clients; owner already spawned local tracer)
         if (!isLocalPlayer)
         {
             SpawnLocalTracer(origin, direction, hitPoint);
         }
     }
 
-    /// <summary>Miss — show tracer on all non-owner clients.</summary>
     [ClientRpc]
     private void RpcOnMiss(Vector3 endPoint, Vector3 origin, Vector3 direction)
     {
@@ -277,14 +414,12 @@ public class Gun : NetworkBehaviour
     // TRACER SPAWNING
     // ════════════════════════════════════════════════════════════════
 
-    /// <summary>Spawn a local-only tracer visual (pooled, no networking).</summary>
     private void SpawnLocalTracer(Vector3 origin, Vector3 direction, Vector3 endpoint = default)
     {
         if (_tracerPool == null) return;
 
         if (endpoint == default)
         {
-            // Calculate endpoint for local prediction
             if (Physics.Raycast(origin, direction, out RaycastHit hit, maxRange))
                 endpoint = hit.point;
             else
@@ -301,11 +436,12 @@ public class Gun : NetworkBehaviour
 
     private System.Collections.IEnumerator CooldownUIRoutine()
     {
-        var wait = new WaitForSeconds(0.017f); // ~60Hz UI update
+        var wait = new WaitForSeconds(0.017f);
+        float fireRateSeconds = fireRateTicks * NetworkTickManager.TickDuration;
         while (true)
         {
             float timeSinceLast = (float)NetworkTime.time - LastFireTime;
-            float cooldownProgress = Mathf.Clamp01(timeSinceLast / cooldown);
+            float cooldownProgress = Mathf.Clamp01(timeSinceLast / fireRateSeconds);
 
             if (Mathf.Abs(cooldownProgress - _lastReportedProgress) > 0.01f)
             {

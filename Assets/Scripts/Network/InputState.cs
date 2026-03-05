@@ -18,8 +18,8 @@ public struct InputState
     public float lookPitch;
 
     // ── Actions ────────────────────────────────────────────────
-    public bool fire;
-    public bool cancelFire;
+    /// <summary>True while Fire1 is held down (level-triggered, auto-fire).</summary>
+    public bool fireHeld;
     public bool useItem;
 }
 
@@ -43,9 +43,8 @@ public static class InputStateSerializer
 
         // Pack booleans into a single byte
         byte flags = 0;
-        if (value.fire)       flags |= 1;
-        if (value.cancelFire) flags |= 2;
-        if (value.useItem)    flags |= 4;
+        if (value.fireHeld) flags |= 1;
+        if (value.useItem)  flags |= 4;
         writer.WriteByte(flags);
     }
 
@@ -61,9 +60,8 @@ public static class InputStateSerializer
         state.lookPitch = reader.ReadShort() / 100f;
 
         byte flags = reader.ReadByte();
-        state.fire       = (flags & 1) != 0;
-        state.cancelFire = (flags & 2) != 0;
-        state.useItem    = (flags & 4) != 0;
+        state.fireHeld = (flags & 1) != 0;
+        state.useItem  = (flags & 4) != 0;
 
         return state;
     }
