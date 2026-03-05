@@ -20,6 +20,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] TextMeshProUGUI interactText;
     [SerializeField] private NotificationSystem notificationSystem;
     [SerializeField] private AbilityUI abilityUI;
+    [SerializeField] private AbilityInfoPanel abilityInfoPanel;
 
     [Header("Crosshair")]
     [SerializeField] private DynamicCrosshair dynamicCrosshair;
@@ -140,6 +141,8 @@ public class UIManager : MonoBehaviour
             if (gameOverText) gameOverText.text = "";
             if (playerStatsText) playerStatsText.text = "";
         }
+
+        ClearAbilityInfo();
 
         _uiState = UIState.Menu;
         UpdateUIState();
@@ -333,6 +336,31 @@ public class UIManager : MonoBehaviour
         if (abilityUI != null)
         {
             abilityUI.ForceAbilityReady(abilityName);
+        }
+    }
+
+    #endregion
+
+    #region Ability Info Panel (F1)
+
+    /// <summary>Populate the F1 ability info panel with character ability data.</summary>
+    public void SetAbilityInfo(
+        string passiveName, string passiveDesc,
+        string activeName, string activeDesc,
+        float cooldown, Sprite icon)
+    {
+        if (abilityInfoPanel != null)
+        {
+            abilityInfoPanel.SetAbilityInfo(passiveName, passiveDesc, activeName, activeDesc, cooldown, icon);
+        }
+    }
+
+    /// <summary>Clear the F1 ability info panel.</summary>
+    public void ClearAbilityInfo()
+    {
+        if (abilityInfoPanel != null)
+        {
+            abilityInfoPanel.ClearInfo();
         }
     }
 

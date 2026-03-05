@@ -70,12 +70,30 @@ public class PlayerMovement : NetworkBehaviour
     [SyncVar(hook = nameof(OnIsFiringChanged))]
     private bool _networkIsFiring;
 
+    // ── Active ability ──────────────────────────────────────────────
+    [Header("Ability")]
+    [SerializeField] private ActiveAbility activeAbility;
+
+    /// <summary>Reference to this character's active ability (for external access).</summary>
+    public ActiveAbility ActiveAbilityRef => activeAbility;
+
+    // ── Speed modifier (set by abilities) ────────────────────────────
+    [SyncVar] private float _speedMultiplier = 1f;
+
+    /// <summary>Movement speed multiplier. Server-only set. Used by abilities.</summary>
+    public float SpeedMultiplier
+    {
+        get => _speedMultiplier;
+        set { if (isServer) _speedMultiplier = Mathf.Max(0.1f, value); }
+    }
+
     // ── Input caching (read once per frame) ───────────────────────
     private float _frameHorizontal;
     private float _frameVertical;
     private float _frameMouseX;
     private float _frameMouseY;
     private bool _frameFire; // level-triggered: true while Fire1 is held
+    private bool _frameAbility; // edge-triggered: true on F press frame
 
     // ── Server-side data for Gun spread calculation ────────────────
     private float _lastInputSpeedSqr;
@@ -181,6 +199,10 @@ public class PlayerMovement : NetworkBehaviour
 
         // Level-triggered: true while Fire1 is held down
         _frameFire = Input.GetButton("Fire1");
+
+        // Edge-triggered: active ability on F key press
+        if (Input.GetKeyDown(KeyCode.F))
+            _frameAbility = true;
     }
 
     /// <summary>
@@ -261,6 +283,8 @@ public class PlayerMovement : NetworkBehaviour
         input.lookPitch = _lookPitch;
         input.fireHeld = _frameFire;
         input.useItem = Input.GetKey(KeyCode.E);
+        input.ability = _frameAbility;
+        _frameAbility = false; // consume edge-trigger
 
         // ── Store input for replay ──────────────────────────────────
         _inputBuffer.Set(tick, in input);
@@ -356,6 +380,10 @@ public class PlayerMovement : NetworkBehaviour
             // ── Speed validation (anti-cheat) ───────────────────────
             ValidateMoveSpeed();
 
+            // ── Active ability (F key, edge-triggered) ───────────────
+            if (input.ability && activeAbility != null)
+                activeAbility.TryActivate();
+
             // ── Update animation SyncVars ───────────────────────────
             UpdateAnimationState(in input);
 
@@ -431,7 +459,7 @@ public class PlayerMovement : NetworkBehaviour
         if (rawInput.sqrMagnitude > 0.0001f)
         {
             moveDirection = transform.TransformDirection(
-                new Vector3(rawInput.x, 0f, rawInput.y)) * moveSpeed;
+                new Vector3(rawInput.x, 0f, rawInput.y)) * (moveSpeed * _speedMultiplier);
         }
 
         // ── Gravity ─────────────────────────────────────────────────

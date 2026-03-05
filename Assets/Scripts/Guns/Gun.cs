@@ -47,6 +47,16 @@ public class Gun : NetworkBehaviour
     [SyncVar(hook = nameof(OnLastFireTimeChanged))]
     protected float LastFireTime = -Mathf.Infinity;
 
+    // ── Damage modifier (set by abilities like BabyBilly's Rage) ──
+    [SyncVar] private float _damageMultiplier = 1f;
+
+    /// <summary>Damage output multiplier. Server-only set. Used by abilities.</summary>
+    public float DamageMultiplier
+    {
+        get => _damageMultiplier;
+        set { if (isServer) _damageMultiplier = Mathf.Max(0f, value); }
+    }
+
     // ── Spread state (deterministic, computed independently on client + server) ──
     private float _sustainedFireInaccuracy;
     private int _lastFireTick;
@@ -390,13 +400,15 @@ public class Gun : NetworkBehaviour
     [Server]
     protected virtual void OnServerHit(IDamageable target, RaycastHit hitInfo, float hitDamage)
     {
+        float finalDamage = hitDamage * _damageMultiplier;
+
         if (target is PlayerHealth playerHealth)
         {
-            playerHealth.TakeDamageFrom(hitDamage, netId);
+            playerHealth.TakeDamageFrom(finalDamage, netId);
         }
         else
         {
-            target.TakeDamage(hitDamage);
+            target.TakeDamage(finalDamage);
         }
     }
 

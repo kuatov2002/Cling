@@ -43,6 +43,19 @@ public class ShadowHealth : PlayerHealth
         Invoke(nameof(DeactivateInvisibility), invisibilityDuration);
     }
 
+    /// <summary>
+    /// Activate manual invisibility for a custom duration.
+    /// Called from ShadowAbility.OnActivate().
+    /// </summary>
+    [Server]
+    public void ActivateManualInvisibility(float duration)
+    {
+        isInvisible = true;
+        RpcHideShadow();
+        CancelInvoke(nameof(DeactivateInvisibility));
+        Invoke(nameof(DeactivateInvisibility), duration);
+    }
+
     [Server]
     private void DeactivateInvisibility()
     {

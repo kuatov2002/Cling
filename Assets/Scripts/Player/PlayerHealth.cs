@@ -15,6 +15,21 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     private uint _lastAttackerNetId;
     private Coroutine _respawnCoroutine;
 
+    // ── Damage modifier (set by ActiveAbility for passive armor) ────
+    private float _incomingDamageMultiplier = 1f;
+
+    /// <summary>Multiplier applied to all incoming damage. Set from ActiveAbility passives (e.g. UncleSam 0.85).</summary>
+    public float IncomingDamageMultiplier
+    {
+        get => _incomingDamageMultiplier;
+        set => _incomingDamageMultiplier = Mathf.Max(0f, value);
+    }
+
+    /// <summary>Current HP (read-only, for ability checks).</summary>
+    public float CurrentHealth => _currentHealth;
+    /// <summary>Max HP (read-only, for ability checks).</summary>
+    public float MaxHealthValue => maxHealth;
+
     // ── Cached component arrays (zero GC in RpcSetPlayerVisible) ───
     private Renderer[] _cachedRenderers;
     private Collider[] _cachedColliders;
@@ -37,7 +52,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     public virtual void TakeDamage(float damage)
     {
         if (!isServer) return;
-        _currentHealth = Mathf.Max(_currentHealth - damage, 0f);
+        _currentHealth = Mathf.Max(_currentHealth - damage * _incomingDamageMultiplier, 0f);
         if (_currentHealth == 0f) Die();
     }
 
@@ -160,6 +175,11 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     protected virtual void ResetAbilitiesForRespawn()
     {
         // Override in subclasses to reset character-specific state
+
+        // Reset active ability cooldown + re-apply passives
+        ActiveAbility ability = GetComponent<ActiveAbility>();
+        if (ability != null)
+            ability.OnRespawn();
     }
 
     [ClientRpc]

@@ -21,6 +21,8 @@ public struct InputState
     /// <summary>True while Fire1 is held down (level-triggered, auto-fire).</summary>
     public bool fireHeld;
     public bool useItem;
+    /// <summary>True on the tick F was pressed (edge-triggered, active ability).</summary>
+    public bool ability;
 }
 
 /// <summary>
@@ -45,6 +47,7 @@ public static class InputStateSerializer
         byte flags = 0;
         if (value.fireHeld) flags |= 1;
         if (value.useItem)  flags |= 4;
+        if (value.ability)  flags |= 8;
         writer.WriteByte(flags);
     }
 
@@ -62,6 +65,7 @@ public static class InputStateSerializer
         byte flags = reader.ReadByte();
         state.fireHeld = (flags & 1) != 0;
         state.useItem  = (flags & 4) != 0;
+        state.ability  = (flags & 8) != 0;
 
         return state;
     }

@@ -3016,6 +3016,7 @@ GameObject:
   - component: {fileID: 2200000000000000001}
   - component: {fileID: 2200000000000000002}
   - component: {fileID: -4761703048805305961}
+  - component: {fileID: 7413427947989043349}
   m_Layer: 3
   m_Name: Alucard
   m_TagString: Player
@@ -3131,6 +3132,7 @@ MonoBehaviour:
   reconciliationThreshold: 0.01
   smoothCorrectionThreshold: 0.5
   smoothCorrectionRate: 10
+  activeAbility: {fileID: 7413427947989043349}
   moveSpeedTolerance: 1.15
 --- !u!114 &2044912615929805900
 MonoBehaviour:
@@ -3231,7 +3233,7 @@ MonoBehaviour:
   moveInaccuracyMax: 25
   fireInaccuracyPerShot: 6
   fireInaccuracyMax: 40
-  fireInaccuracyDecayRate: 12
+  fireInaccuracyDecayRate: 48
   firstShotThreshold: 1
   hitLayerMask:
     serializedVersion: 2
@@ -3303,6 +3305,23 @@ MonoBehaviour:
     historyLimit: 20
     captureInterval: 0.015625
   historyColor: {r: 1, g: 1, b: 1, a: 1}
+--- !u!114 &7413427947989043349
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 366cf4e8bb2753845a9fcb1f85bd9dc2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AlucardAbility
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  abilityIcon: {fileID: 21300084, guid: 7ab74e659e1f0a34d9cfec21c478fc12, type: 3}
+  healAmount: 10
 --- !u!1 &5619830789860858026
 GameObject:
   m_ObjectHideFlags: 0
