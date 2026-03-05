@@ -44,6 +44,16 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     [Server]
     public void TakeDamageFrom(float damage, uint attackerNetId)
     {
+        // Block friendly fire — reject damage from same-team players
+        if (attackerNetId != 0 &&
+            NetworkServer.spawned.TryGetValue(attackerNetId, out NetworkIdentity attackerIdentity))
+        {
+            Team attackerTeam = attackerIdentity.GetComponent<PlayerTeam>()?.CurrentTeam ?? Team.None;
+            Team myTeam = GetComponent<PlayerTeam>()?.CurrentTeam ?? Team.None;
+            if (attackerTeam != Team.None && myTeam != Team.None && attackerTeam == myTeam)
+                return; // Friendly fire blocked
+        }
+
         _lastAttackerNetId = attackerNetId;
         TakeDamage(damage);
     }
@@ -100,10 +110,15 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
         if (_lastAttackerNetId == 0) return;
         if (!NetworkServer.spawned.TryGetValue(_lastAttackerNetId, out NetworkIdentity attackerIdentity)) return;
 
+        // Safety net: don't award kills for friendly fire
+        Team attackerTeam = attackerIdentity.GetComponent<PlayerTeam>()?.CurrentTeam ?? Team.None;
+        Team victimTeam = GetComponent<PlayerTeam>()?.CurrentTeam ?? Team.None;
+        if (attackerTeam != Team.None && victimTeam != Team.None && attackerTeam == victimTeam)
+            return; // Team kill — no credit
+
         PlayerStats attackerStats = attackerIdentity.GetComponent<PlayerStats>();
         attackerStats?.AddKill();
 
-        Team attackerTeam = attackerIdentity.GetComponent<PlayerTeam>()?.CurrentTeam ?? Team.None;
         GameManager.Instance?.OnPlayerKilled(attackerTeam);
 
         string killerName = attackerIdentity.GetComponent<PlayerState>()?.PlayerNickname ?? "Unknown";

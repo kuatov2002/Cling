@@ -116,10 +116,14 @@ public class Gun : NetworkBehaviour
         // Spawn local tracer immediately (responsive feel)
         SpawnLocalTracer(origin, spreadDirection);
 
-        // Update spread state
-        float decayed = Mathf.Max(0f, _sustainedFireInaccuracy - fireInaccuracyDecayRate * timeSinceLastShot);
-        _sustainedFireInaccuracy = Mathf.Min(decayed + fireInaccuracyPerShot, fireInaccuracyMax);
-        _lastFireTick = currentTick;
+        // Update spread state — only on pure client.
+        // On host, CmdFireAutomatic runs inline and already updated the state.
+        if (!isServer)
+        {
+            float decayed = Mathf.Max(0f, _sustainedFireInaccuracy - fireInaccuracyDecayRate * timeSinceLastShot);
+            _sustainedFireInaccuracy = Mathf.Min(decayed + fireInaccuracyPerShot, fireInaccuracyMax);
+            _lastFireTick = currentTick;
+        }
 
         return true;
     }
@@ -289,55 +293,80 @@ public class Gun : NetworkBehaviour
         _lastFireTick = clientTick;
         LastFireTime = (float)NetworkTime.time;
 
-        // ── Lag compensation: estimate client's perceived time ──────
-        double estimatedTime = LagCompensation.EstimateTime(
-            NetworkTime.localTime,
-            connectionToClient.rtt,
-            NetworkClient.bufferTime);
-
-        // ── Collect all enemy LagCompensators ───────────────────────
-        _lagCompensators.Clear();
-        FindAllLagCompensators(_lagCompensators);
-
-        // ── Rewind & Raycast ────────────────────────────────────────
-        var originalPositions = new (LagCompensator comp, Vector3 pos, Quaternion rot)[_lagCompensators.Count];
+        // ── Lag compensation (skip for host — no latency to compensate) ──
+        bool needsLagComp = connectionToClient != null &&
+                            !(connectionToClient is LocalConnectionToClient);
         int targetCount = 0;
+        (LagCompensator comp, Vector3 pos, Quaternion rot)[] originalPositions = null;
 
-        for (int i = 0; i < _lagCompensators.Count; i++)
+        if (needsLagComp)
         {
-            var lc = _lagCompensators[i];
-            if (lc.netIdentity == netIdentity) continue;
+            _lagCompensators.Clear();
+            FindAllLagCompensators(_lagCompensators);
 
-            var targetTeam = lc.GetComponent<PlayerTeam>();
-            var ownerTeam = GetComponent<PlayerTeam>();
-            if (targetTeam && ownerTeam &&
-                ownerTeam.CurrentTeam != Team.None &&
-                targetTeam.CurrentTeam == ownerTeam.CurrentTeam)
-                continue;
+            originalPositions = new (LagCompensator, Vector3, Quaternion)[_lagCompensators.Count];
 
-            if (lc.Sample(connectionToClient, out Capture3D sample))
+            for (int i = 0; i < _lagCompensators.Count; i++)
             {
-                originalPositions[targetCount] = (lc, lc.transform.position, lc.transform.rotation);
-                targetCount++;
-                lc.transform.position = sample.position;
+                var lc = _lagCompensators[i];
+                if (lc.netIdentity == netIdentity) continue;
+
+                // Skip teammates — no need to rewind friendly positions
+                var targetTeam = lc.GetComponent<PlayerTeam>();
+                var ownerTeam = GetComponent<PlayerTeam>();
+                if (targetTeam && ownerTeam &&
+                    ownerTeam.CurrentTeam != Team.None &&
+                    targetTeam.CurrentTeam == ownerTeam.CurrentTeam)
+                    continue;
+
+                if (lc.Sample(connectionToClient, out Capture3D sample))
+                {
+                    originalPositions[targetCount] = (lc, lc.transform.position, lc.transform.rotation);
+                    targetCount++;
+                    lc.transform.position = sample.position;
+                }
             }
         }
 
         // ── Perform server-side raycast with spread direction ─────────
         bool didHit = Physics.Raycast(origin, spreadDirection, out RaycastHit hitInfo, maxRange, hitLayerMask);
 
-        // ── Restore all positions ───────────────────────────────────
-        for (int i = 0; i < targetCount; i++)
+        // ── Restore all rewound positions ─────────────────────────────
+        if (originalPositions != null)
         {
-            var (comp, pos, rot) = originalPositions[i];
-            comp.transform.position = pos;
-            comp.transform.rotation = rot;
+            for (int i = 0; i < targetCount; i++)
+            {
+                var (comp, pos, rot) = originalPositions[i];
+                comp.transform.position = pos;
+                comp.transform.rotation = rot;
+            }
         }
 
         // ── Process hit ─────────────────────────────────────────────
         if (didHit)
         {
             Vector3 hitPoint = hitInfo.point;
+
+            // Self-hit guard (gun origin outside own collider edge case)
+            var hitIdentity = hitInfo.collider.GetComponentInParent<NetworkIdentity>();
+            if (hitIdentity != null && hitIdentity == netIdentity)
+            {
+                RpcOnMiss(hitPoint, origin, spreadDirection);
+                return;
+            }
+
+            // Friendly fire check — block damage to same-team players
+            var hitTeam = hitInfo.collider.GetComponentInParent<PlayerTeam>();
+            var myTeam = GetComponent<PlayerTeam>();
+            if (hitTeam != null && myTeam != null &&
+                myTeam.CurrentTeam != Team.None &&
+                hitTeam.CurrentTeam == myTeam.CurrentTeam)
+            {
+                // Friendly fire — treat as miss
+                RpcOnMiss(hitPoint, origin, spreadDirection);
+                return;
+            }
+
             var damageable = hitInfo.collider.GetComponentInParent<IDamageable>();
             if (damageable != null)
             {

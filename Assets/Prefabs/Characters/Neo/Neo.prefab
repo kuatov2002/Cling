@@ -2751,11 +2751,11 @@ MonoBehaviour:
   hitEffectPrefab: {fileID: 0}
   tracerPrefab: {fileID: 114000000000001, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 3}
   fireRateTicks: 6
-  baseInaccuracy: 0.4
-  moveInaccuracyMax: 4
-  fireInaccuracyPerShot: 0.6
-  fireInaccuracyMax: 7
-  fireInaccuracyDecayRate: 8
+  baseInaccuracy: 1
+  moveInaccuracyMax: 25
+  fireInaccuracyPerShot: 6
+  fireInaccuracyMax: 40
+  fireInaccuracyDecayRate: 12
   firstShotThreshold: 0.35
   hitLayerMask:
     serializedVersion: 2
