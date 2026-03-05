@@ -13,6 +13,7 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private int killsToWin = 25;
     [SerializeField] private float respawnDelay = 3f;
     [SerializeField] private float gameStartDelay = 3f;
+    [SerializeField] private int minPlayersToStart = 1;
 
     // Player Management
     private readonly List<PlayerState> _players = new();
@@ -71,6 +72,15 @@ public class GameManager : NetworkBehaviour
     {
         SubscribeToNetworkEvents();
         CollectSpawnPoints();
+
+        // GameManager only exists in the game scene,
+        // so if we're here, the room transition already happened.
+        // The GameStarted event fires BEFORE the scene loads,
+        // so we'd miss it. Set state to Starting immediately.
+        if (isServer)
+        {
+            _currentGameState = GameState.Starting;
+        }
     }
 
     private void Update()
@@ -84,6 +94,9 @@ public class GameManager : NetworkBehaviour
             _timerRunning = false;
             EndGameByTimeout();
         }
+
+        // SyncVar hooks don't fire on the server — update UI manually on host
+        UIManager.Instance?.UpdateMatchTimer(_matchTimeRemaining);
     }
 
     private void OnDestroy()
@@ -100,7 +113,6 @@ public class GameManager : NetworkBehaviour
     {
         RoomManager.HostStopped += OnNetworkStopped;
         RoomManager.ClientStopped += OnNetworkStopped;
-        RoomManager.GameStarted += OnGameStarted;
         RoomManager.PlayerDisconnected += OnPlayerDisconnected;
     }
 
@@ -108,7 +120,6 @@ public class GameManager : NetworkBehaviour
     {
         RoomManager.HostStopped -= OnNetworkStopped;
         RoomManager.ClientStopped -= OnNetworkStopped;
-        RoomManager.GameStarted -= OnGameStarted;
         RoomManager.PlayerDisconnected -= OnPlayerDisconnected;
     }
 
@@ -122,12 +133,6 @@ public class GameManager : NetworkBehaviour
     #endregion
 
     #region Network Events
-
-    private void OnGameStarted()
-    {
-        Debug.Log("Game started event received");
-        _currentGameState = GameState.Starting;
-    }
 
     private void OnPlayerDisconnected(NetworkConnection conn)
     {
@@ -232,7 +237,7 @@ public class GameManager : NetworkBehaviour
 
     private bool CanStartGame()
     {
-        return _playerTeams.Count >= 2 && _currentGameState != GameState.Waiting;
+        return _playerTeams.Count >= minPlayersToStart && _currentGameState != GameState.Waiting;
     }
 
     [Server]
@@ -329,6 +334,9 @@ public class GameManager : NetworkBehaviour
             _redTeamKills++;
         else if (killerTeam == Team.Blue)
             _blueTeamKills++;
+
+        // SyncVar hooks don't fire on the server — update UI manually on host
+        UIManager.Instance?.UpdateTeamScores(_redTeamKills, _blueTeamKills);
 
         CheckWinConditions();
     }

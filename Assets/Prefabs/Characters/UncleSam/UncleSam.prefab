@@ -2570,6 +2570,8 @@ GameObject:
   - component: {fileID: 1395359251054008825}
   - component: {fileID: 5131815614427623843}
   - component: {fileID: 5444459871788013907}
+  - component: {fileID: 6600000000000000001}
+  - component: {fileID: 6600000000000000002}
   m_Layer: 3
   m_Name: UncleSam
   m_TagString: Player
@@ -3650,3 +3652,33 @@ SkinnedMeshRenderer:
     m_Center: {x: -0.00000011920929, y: 0.8587489, z: -0.027915299}
     m_Extent: {x: 1.0258236, y: 0.9798567, z: 0.30891627}
   m_DirtyAABB: 0
+--- !u!114 &6600000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0825fb706bb5b2243a27db2d16795573, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &6600000000000000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca45da15340f22043b994bfee351e879, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0

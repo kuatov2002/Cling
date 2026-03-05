@@ -3115,12 +3115,13 @@ GameObject:
   - component: {fileID: 1484427046697935701}
   - component: {fileID: 2044912615929805900}
   - component: {fileID: 5512825531000818770}
-  - component: {fileID: 2851042032946622653}
   - component: {fileID: 6509763129446741143}
   - component: {fileID: 6221513755316972515}
   - component: {fileID: 6675651673657213154}
   - component: {fileID: -545436430807402659}
   - component: {fileID: -4164845841248182935}
+  - component: {fileID: 2200000000000000001}
+  - component: {fileID: 2200000000000000002}
   m_Layer: 3
   m_Name: Alucard
   m_TagString: Player
@@ -3285,7 +3286,6 @@ MonoBehaviour:
   syncInterval: 0
   maxHealth: 100
   healthBar: {fileID: 6760398375058191348}
-  angelPrefab: {fileID: 5538461023050153465, guid: a1c0e9e29a69bff419833fdc93141f3d, type: 3}
   healEffect: {fileID: 7371974944114216946, guid: 75dec448cb6f22042a290e27774a5138, type: 3}
 --- !u!114 &5512825531000818770
 MonoBehaviour:
@@ -3312,22 +3312,6 @@ MonoBehaviour:
   hotkeys: 3100000032000000330000003400000035000000
   useItemKey: 101
   moneyTakeInterval: 10
---- !u!114 &2851042032946622653
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5538461023050153465}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bb0b042a0e5d67d4c8cbc8823568c9f1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  syncDirection: 0
-  syncMode: 0
-  syncInterval: 0
-  sheriffStar: {fileID: 2879620988358419153}
 --- !u!114 &6509763129446741143
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3414,6 +3398,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ccbe1baf9c054c44bf6dc7aa459e0e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneLoader
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &2200000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0825fb706bb5b2243a27db2d16795573, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &2200000000000000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca45da15340f22043b994bfee351e879, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
   syncDirection: 0
   syncMode: 0
   syncInterval: 0

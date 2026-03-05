@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class AlucardBullet : Bullet
 {
-    [SyncVar] private float _healAmount;
+    private float _healAmount;
 
     public void Initialize(Vector3 dir, float dmg, uint ownerNetId, float heal)
     {

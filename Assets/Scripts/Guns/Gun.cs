@@ -159,7 +159,6 @@ public class Gun : NetworkBehaviour
         Bullet bulletComponent = bullet.GetComponent<Bullet>();
         if (bulletComponent)
         {
-            // Initialize BEFORE Spawn so SyncVars are included in spawn message
             bulletComponent.Initialize(shootDirection, damage, netId);
         }
 

@@ -6,9 +6,8 @@ public class Bullet : NetworkBehaviour
     protected float speed = 900f;
     protected float lifeTime = 3f;
 
-    [SyncVar] protected float _damage;
-    [SyncVar] protected Vector3 _direction;
-    [SyncVar] protected uint _ownerNetId;
+    protected float _damage;
+    protected uint _ownerNetId;
 
     [SerializeField] protected ParticleSystem hitEffectPrefab;
 
@@ -25,24 +24,34 @@ public class Bullet : NetworkBehaviour
 
     public virtual void Initialize(Vector3 dir, float dmg, uint ownerNetId = 0)
     {
-        _direction = dir.normalized;
         _damage = dmg;
         _ownerNetId = ownerNetId;
     }
 
     protected virtual void Update()
     {
+        Vector3 forward = transform.forward;
         float moveDistance = speed * Time.deltaTime;
         Vector3 start = transform.position;
-        Vector3 end = start + _direction * moveDistance;
+        Vector3 end = start + forward * moveDistance;
 
         if (isServer)
         {
-            if (Physics.Raycast(start, _direction, out RaycastHit hit, moveDistance))
+            if (Physics.Raycast(start, forward, out RaycastHit hit, moveDistance))
             {
+                // Skip own owner's collider
+                if (IsOwner(hit.collider))
+                {
+                    transform.position = end;
+                    return;
+                }
+
                 // Skip friendly targets (no friendly fire)
                 if (IsFriendlyTarget(hit.collider))
+                {
+                    transform.position = end;
                     return;
+                }
 
                 var target = hit.collider.GetComponent<IDamageable>();
 
@@ -58,6 +67,14 @@ public class Bullet : NetworkBehaviour
         }
 
         transform.position = end;
+    }
+
+    [Server]
+    private bool IsOwner(Collider col)
+    {
+        if (_ownerNetId == 0) return false;
+        var identity = col.GetComponentInParent<NetworkIdentity>();
+        return identity != null && identity.netId == _ownerNetId;
     }
 
     [Server]
