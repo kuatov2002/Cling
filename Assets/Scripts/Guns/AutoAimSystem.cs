@@ -1,42 +1,56 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using Mirror;
 
+/// <summary>
+/// Client-side auto-aim assistance system.
+/// Zero-GC: uses pre-allocated arrays and manual loops instead of LINQ.
+/// </summary>
 public class AutoAimSystem : NetworkBehaviour
 {
-    private readonly float _aimRadius = 80f;
-    private readonly float _maxAimDistance = 100f;
+    [SerializeField] private float aimRadius = 80f;
+    [SerializeField] private float maxAimDistance = 100f;
     [SerializeField] private LayerMask targetLayerMask = -1;
     [SerializeField] private LayerMask obstacleLayerMask = -1;
 
-    private Camera playerCamera;
-    private Transform currentTarget;
+    private Camera _playerCamera;
+    private Team _myTeam;
+
+    // ── Pre-allocated buffers (zero GC) ────────────────────────────
+    private readonly Collider[] _overlapResults = new Collider[16];
+    private readonly List<Transform> _targetCache = new List<Transform>(16);
 
     public override void OnStartLocalPlayer()
     {
-        playerCamera = Camera.main;
+        _playerCamera = Camera.main;
     }
 
     public Transform GetBestTarget(Vector3 aimDirection)
     {
-        if (!isLocalPlayer) return null;
+        if (!isLocalPlayer || !_playerCamera) return null;
 
-        var targets = FindTargetsInRange();
-        if (targets.Count == 0) return null;
+        // Cache team (avoids GetComponent every frame)
+        var teamComp = GetComponent<PlayerTeam>();
+        _myTeam = teamComp ? teamComp.CurrentTeam : Team.None;
+
+        FindTargetsInRange();
+        if (_targetCache.Count == 0) return null;
 
         Transform bestTarget = null;
         float bestScore = float.MaxValue;
         Vector3 screenCenter = new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0f);
 
-        foreach (var target in targets)
+        for (int i = 0; i < _targetCache.Count; i++)
         {
+            Transform target = _targetCache[i];
             if (!IsTargetValid(target)) continue;
 
-            Vector3 screenPos = playerCamera.WorldToScreenPoint(target.position);
-            float distanceFromCenter = Vector2.Distance(screenPos, screenCenter);
+            Vector3 screenPos = _playerCamera.WorldToScreenPoint(target.position);
+            float distanceFromCenter = Vector2.Distance(
+                new Vector2(screenPos.x, screenPos.y),
+                new Vector2(screenCenter.x, screenCenter.y));
 
-            if (distanceFromCenter <= _aimRadius)
+            if (distanceFromCenter <= aimRadius)
             {
                 float score = CalculateTargetScore(target, aimDirection, distanceFromCenter);
                 if (score < bestScore)
@@ -50,35 +64,46 @@ public class AutoAimSystem : NetworkBehaviour
         return bestTarget;
     }
 
-    private List<Transform> FindTargetsInRange()
+    /// <summary>
+    /// Find all valid targets in range. Zero-GC: uses NonAlloc + manual loops.
+    /// </summary>
+    private void FindTargetsInRange()
     {
-        Team myTeam = GetComponent<PlayerTeam>()?.CurrentTeam ?? Team.None;
+        _targetCache.Clear();
 
-        var colliders = Physics.OverlapSphere(transform.position, _maxAimDistance, targetLayerMask);
-        return colliders
-            .Where(c => c.transform != transform && c.GetComponent<PlayerHealth>())
-            .Where(c =>
-            {
-                // Only target enemies — skip teammates
-                var targetTeam = c.GetComponent<PlayerTeam>();
-                return targetTeam == null || myTeam == Team.None || targetTeam.CurrentTeam != myTeam;
-            })
-            .Where(c =>
-            {
-                // Skip dead players
-                var targetState = c.GetComponent<PlayerState>();
-                return targetState == null || targetState.IsAlive;
-            })
-            .Select(c => c.transform)
-            .ToList();
+        int count = Physics.OverlapSphereNonAlloc(
+            transform.position, maxAimDistance, _overlapResults, targetLayerMask);
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider c = _overlapResults[i];
+            if (c == null || c.transform == transform) continue;
+
+            // Must have PlayerHealth (is a player)
+            if (!c.TryGetComponent<PlayerHealth>(out _)) continue;
+
+            // Skip teammates
+            if (c.TryGetComponent<PlayerTeam>(out var targetTeam) &&
+                _myTeam != Team.None &&
+                targetTeam.CurrentTeam == _myTeam)
+                continue;
+
+            // Skip dead players
+            if (c.TryGetComponent<PlayerState>(out var targetState) &&
+                !targetState.IsAlive)
+                continue;
+
+            _targetCache.Add(c.transform);
+        }
     }
 
     private bool IsTargetValid(Transform target)
     {
-        Vector3 directionToTarget = (target.position - playerCamera.transform.position).normalized;
-        float distance = Vector3.Distance(playerCamera.transform.position, target.position);
+        Vector3 directionToTarget = (target.position - _playerCamera.transform.position).normalized;
+        float distance = Vector3.Distance(_playerCamera.transform.position, target.position);
 
-        return !Physics.Raycast(playerCamera.transform.position, directionToTarget,
+        return !Physics.Raycast(
+            _playerCamera.transform.position, directionToTarget,
             distance, obstacleLayerMask);
     }
 
@@ -86,7 +111,7 @@ public class AutoAimSystem : NetworkBehaviour
     {
         Vector3 directionToTarget = (target.position - transform.position).normalized;
         float angleWeight = 1f - Vector3.Dot(aimDirection, directionToTarget);
-        float distanceWeight = screenDistance / _aimRadius;
+        float distanceWeight = screenDistance / aimRadius;
 
         return angleWeight * 0.7f + distanceWeight * 0.3f;
     }
@@ -94,8 +119,6 @@ public class AutoAimSystem : NetworkBehaviour
     public Vector3 GetAdjustedAimDirection(Vector3 originalDirection, Transform target)
     {
         if (!target) return originalDirection;
-
-        Vector3 targetDirection = (target.position - playerCamera.transform.position).normalized;
-        return targetDirection;
+        return (target.position - _playerCamera.transform.position).normalized;
     }
 }

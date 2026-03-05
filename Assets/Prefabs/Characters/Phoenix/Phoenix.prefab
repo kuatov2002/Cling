@@ -323,7 +323,6 @@ GameObject:
   - component: {fileID: 4843741509908108608}
   - component: {fileID: 7926994057269890633}
   - component: {fileID: 7838624479138037432}
-  - component: {fileID: 7348974656767358080}
   - component: {fileID: 2556742167741873717}
   - component: {fileID: 1484427046697935701}
   - component: {fileID: 5512825531000818770}
@@ -334,6 +333,7 @@ GameObject:
   - component: {fileID: 4589802482566050580}
   - component: {fileID: 3300000000000000001}
   - component: {fileID: 3300000000000000002}
+  - component: {fileID: 6738922417988524060}
   m_Layer: 3
   m_Name: Phoenix
   m_TagString: Player
@@ -401,40 +401,6 @@ MonoBehaviour:
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
---- !u!114 &7348974656767358080
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5538461023050153465}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a553cb17010b2403e8523b558bffbc14, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  syncDirection: 1
-  syncMode: 0
-  syncInterval: 0
-  target: {fileID: 4843741509908108608}
-  syncPosition: 1
-  syncRotation: 1
-  syncScale: 0
-  onlySyncOnChange: 1
-  compressRotation: 1
-  interpolatePosition: 1
-  interpolateRotation: 1
-  interpolateScale: 1
-  coordinateSpace: 0
-  timelineOffset: 1
-  showGizmos: 0
-  showOverlay: 0
-  overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
-  bufferResetMultiplier: 3
-  useFixedUpdate: 0
-  positionSensitivity: 0.01
-  rotationSensitivity: 0.01
-  scaleSensitivity: 0.01
 --- !u!143 &2556742167741873717
 CharacterController:
   m_ObjectHideFlags: 0
@@ -480,6 +446,10 @@ MonoBehaviour:
   followTarget: {fileID: 237925682984545735}
   gun: {fileID: 5075816131342946485}
   animator: {fileID: 8976769681350712395}
+  reconciliationThreshold: 0.01
+  smoothCorrectionThreshold: 0.5
+  smoothCorrectionRate: 10
+  moveSpeedTolerance: 1.15
 --- !u!114 &5512825531000818770
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -551,10 +521,16 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  bulletPrefab: {fileID: 2499570186365837352, guid: 670d5fe05e6d55446b4aa5b444519cba, type: 3}
   damage: 20
   cooldown: 1.5
   gunTransform: {fileID: 5548219211156043638}
+  maxRange: 300
+  hitEffectPrefab: {fileID: 0}
+  tracerPrefab: {fileID: 0}
+  hitLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  hitTolerance: 0.5
 --- !u!114 &489996352984123824
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -621,6 +597,26 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+--- !u!114 &6738922417988524060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5538461023050153465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a898831dd60c4cdfbfd9a6ea5702ed01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror.Components::Mirror.LagCompensator
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  trackedCollider: {fileID: 7926994057269890633}
+  lagCompensationSettings:
+    historyLimit: 20
+    captureInterval: 0.015625
+  historyColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &7472770470738815705
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,27 +1,24 @@
 using Mirror;
 using UnityEngine;
 
+/// <summary>
+/// Alucard's hitscan weapon: damages target AND heals owner on hit.
+/// </summary>
 public class AlucardGun : Gun
 {
     [SerializeField] private float healAmount = 10f;
 
-    [Command]
-    protected override void CmdFire(Vector3 shootDirection)
+    /// <summary>
+    /// Override server hit: apply damage AND heal the shooter.
+    /// </summary>
+    [Server]
+    protected override void OnServerHit(IDamageable target, RaycastHit hitInfo, float hitDamage)
     {
-        LastFireTime = (float)NetworkTime.time;
+        // Deal damage to target
+        base.OnServerHit(target, hitInfo, hitDamage);
 
-        GameObject bullet = Instantiate(
-            bulletPrefab,
-            gunTransform.position,
-            Quaternion.LookRotation(shootDirection)
-        );
-
-        AlucardBullet bulletComponent = bullet.GetComponent<AlucardBullet>();
-        if (bulletComponent)
-        {
-            bulletComponent.Initialize(shootDirection, damage, netId, healAmount);
-        }
-
-        NetworkServer.Spawn(bullet);
+        // Heal self
+        var selfHealable = GetComponent<IHealable>();
+        selfHealable?.Heal(healAmount);
     }
 }

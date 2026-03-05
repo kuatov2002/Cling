@@ -15,6 +15,19 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     private uint _lastAttackerNetId;
     private Coroutine _respawnCoroutine;
 
+    // ── Cached component arrays (zero GC in RpcSetPlayerVisible) ───
+    private Renderer[] _cachedRenderers;
+    private Collider[] _cachedColliders;
+    private Canvas[] _cachedCanvases;
+
+    private void Awake()
+    {
+        // Cache once — avoid per-call GetComponentsInChildren allocations
+        _cachedRenderers = GetComponentsInChildren<Renderer>(true);
+        _cachedColliders = GetComponentsInChildren<Collider>(true);
+        _cachedCanvases = GetComponentsInChildren<Canvas>(true);
+    }
+
     [ServerCallback]
     public override void OnStartServer()
     {
@@ -39,6 +52,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     {
         if (!isServer) return;
         _currentHealth = Mathf.Min(_currentHealth + healAmount, maxHealth);
+        // TODO: pool heal effects via NetworkPool instead of Instantiate
         if (healEffect)
             Instantiate(healEffect, transform.position, Quaternion.identity);
     }
@@ -142,25 +156,23 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     [ClientRpc]
     private void RpcSetPlayerVisible(bool visible)
     {
-        // Toggle all renderers
-        var renderers = GetComponentsInChildren<Renderer>();
-        foreach (var renderer in renderers)
+        // Use cached arrays — zero GC
+        for (int i = 0; i < _cachedRenderers.Length; i++)
         {
-            renderer.enabled = visible;
+            if (_cachedRenderers[i])
+                _cachedRenderers[i].enabled = visible;
         }
 
-        // Toggle colliders
-        var colliders = GetComponentsInChildren<Collider>();
-        foreach (var col in colliders)
+        for (int i = 0; i < _cachedColliders.Length; i++)
         {
-            col.enabled = visible;
+            if (_cachedColliders[i])
+                _cachedColliders[i].enabled = visible;
         }
 
-        // Toggle UI elements (health bar, nickname)
-        var canvases = GetComponentsInChildren<Canvas>();
-        foreach (var canvas in canvases)
+        for (int i = 0; i < _cachedCanvases.Length; i++)
         {
-            canvas.enabled = visible;
+            if (_cachedCanvases[i])
+                _cachedCanvases[i].enabled = visible;
         }
 
         // Re-enable health bar on show
@@ -173,16 +185,26 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     [ClientRpc]
     private void RpcTeleportPlayer(Vector3 position, Quaternion rotation)
     {
-        CharacterController cc = GetComponent<CharacterController>();
-        if (cc)
+        // Use PlayerMovement.Teleport which properly resets prediction state
+        PlayerMovement movement = GetComponent<PlayerMovement>();
+        if (movement)
         {
-            cc.enabled = false;
-            transform.SetPositionAndRotation(position, rotation);
-            cc.enabled = true;
+            movement.Teleport(position, rotation);
         }
         else
         {
-            transform.SetPositionAndRotation(position, rotation);
+            // Fallback
+            CharacterController cc = GetComponent<CharacterController>();
+            if (cc)
+            {
+                cc.enabled = false;
+                transform.SetPositionAndRotation(position, rotation);
+                cc.enabled = true;
+            }
+            else
+            {
+                transform.SetPositionAndRotation(position, rotation);
+            }
         }
     }
 }

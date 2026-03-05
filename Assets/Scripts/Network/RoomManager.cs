@@ -23,6 +23,9 @@ public class RoomManager : NetworkRoomManager
     {
         base.Awake();
         maxConnections = maxPlayers;
+
+        // Set Mirror tick/send rate to match our simulation tick rate
+        sendRate = NetworkTickManager.TickRate;
     }
 
     #region Server Callbacks

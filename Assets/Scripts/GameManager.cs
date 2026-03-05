@@ -64,8 +64,9 @@ public class GameManager : NetworkBehaviour
 
         Instance = this;
 
-        Application.targetFrameRate = 60;
-        QualitySettings.vSyncCount = 1;
+        // Framerate uncapped — simulation is tick-based (64 Hz) via NetworkTickManager
+        // VSync off for minimum input latency
+        QualitySettings.vSyncCount = 0;
     }
 
     private void Start()
@@ -80,14 +81,18 @@ public class GameManager : NetworkBehaviour
         if (isServer)
         {
             _currentGameState = GameState.Starting;
+            NetworkTickManager.OnTick += OnServerTick;
         }
     }
 
-    private void Update()
+    /// <summary>
+    /// Server-side tick update. Timer is tick-based (deterministic, frame-rate independent).
+    /// </summary>
+    private void OnServerTick(int tick)
     {
         if (!isServer || !_timerRunning) return;
 
-        _matchTimeRemaining -= Time.deltaTime;
+        _matchTimeRemaining -= NetworkTickManager.TickDuration;
         if (_matchTimeRemaining <= 0f)
         {
             _matchTimeRemaining = 0f;
@@ -99,9 +104,15 @@ public class GameManager : NetworkBehaviour
         UIManager.Instance?.UpdateMatchTimer(_matchTimeRemaining);
     }
 
+    private void Update()
+    {
+        // Update() is now empty on server — timer logic moved to OnServerTick
+    }
+
     private void OnDestroy()
     {
         UnsubscribeFromNetworkEvents();
+        NetworkTickManager.OnTick -= OnServerTick;
         if (Instance == this) Instance = null;
     }
 
@@ -459,18 +470,44 @@ public class GameManager : NetworkBehaviour
     public bool IsGameInProgress => _gameInProgress;
     public GameState CurrentGameState => _currentGameState;
     public int PlayerCount => _players.Count;
-    public int AlivePlayerCount => _players.Count(p => p.IsAlive);
     public int RedTeamKills => _redTeamKills;
     public int BlueTeamKills => _blueTeamKills;
 
-    public List<PlayerState> GetAlivePlayers()
+    // ── Zero-GC pre-allocated result lists ──────────────────────────
+    private readonly List<PlayerState> _alivePlayersCache = new();
+    private readonly List<PlayerTeam> _teamPlayersCache = new();
+
+    public int AlivePlayerCount
     {
-        return _players.Where(p => p.IsAlive).ToList();
+        get
+        {
+            int count = 0;
+            for (int i = 0; i < _players.Count; i++)
+                if (_players[i].IsAlive) count++;
+            return count;
+        }
     }
 
+    /// <summary>
+    /// Returns alive players. WARNING: returned list is shared/reused — do not cache the reference.
+    /// </summary>
+    public List<PlayerState> GetAlivePlayers()
+    {
+        _alivePlayersCache.Clear();
+        for (int i = 0; i < _players.Count; i++)
+            if (_players[i].IsAlive) _alivePlayersCache.Add(_players[i]);
+        return _alivePlayersCache;
+    }
+
+    /// <summary>
+    /// Returns players on a team. WARNING: returned list is shared/reused — do not cache the reference.
+    /// </summary>
     public List<PlayerTeam> GetPlayersOnTeam(Team team)
     {
-        return _playerTeams.Where(t => t.CurrentTeam == team).ToList();
+        _teamPlayersCache.Clear();
+        for (int i = 0; i < _playerTeams.Count; i++)
+            if (_playerTeams[i].CurrentTeam == team) _teamPlayersCache.Add(_playerTeams[i]);
+        return _teamPlayersCache;
     }
 
     #endregion

@@ -1,31 +1,22 @@
 using Mirror;
 using UnityEngine;
 
+/// <summary>
+/// CrazyJack's hitscan weapon: 40% chance to deal double damage.
+/// </summary>
 public class CrazyJackGun : Gun
 {
     [SerializeField] private float luckyChance = 0.4f;
 
-    [Command]
-    protected override void CmdFire(Vector3 shootDirection)
+    /// <summary>
+    /// Override server hit: roll lucky shot for double damage.
+    /// </summary>
+    [Server]
+    protected override void OnServerHit(IDamageable target, RaycastHit hitInfo, float hitDamage)
     {
-        LastFireTime = (float)NetworkTime.time;
-
-        // Lucky shot: chance to fire a double-damage bullet
         bool isLuckyShot = Random.value < luckyChance;
-        float finalDamage = isLuckyShot ? damage * 2f : damage;
+        float finalDamage = isLuckyShot ? hitDamage * 2f : hitDamage;
 
-        GameObject bullet = Instantiate(
-            bulletPrefab,
-            gunTransform.position,
-            Quaternion.LookRotation(shootDirection)
-        );
-
-        Bullet bulletComponent = bullet.GetComponent<Bullet>();
-        if (bulletComponent)
-        {
-            bulletComponent.Initialize(shootDirection, finalDamage, netId);
-        }
-
-        NetworkServer.Spawn(bullet);
+        base.OnServerHit(target, hitInfo, finalDamage);
     }
 }
