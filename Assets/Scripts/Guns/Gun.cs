@@ -1,6 +1,5 @@
 using Mirror;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class Gun : NetworkBehaviour
 {
@@ -8,74 +7,20 @@ public class Gun : NetworkBehaviour
     [SerializeField] protected float damage = 20f;
     [SerializeField] private float cooldown = 0.5f;
     [SerializeField] protected Transform gunTransform;
-    [SerializeField] private int maxBulletAmount = 6;
 
     [SyncVar(hook = nameof(OnLastFireTimeChanged))]
     protected float LastFireTime = -Mathf.Infinity;
 
-    [FormerlySerializedAs("BulletAmount")]
-    [SyncVar(hook = nameof(OnBulletAmountChanged))]
-    [SerializeField] protected int bulletAmount = 1;
-
     private bool _isCharged = false;
     private Camera _playerCamera;
     private float _lastReportedProgress = -1f;
-    private PlayerInventory _playerInventory;
-    private AmmoShop _currentAmmoShop;
 
     private void Start()
     {
-        _playerInventory = GetComponent<PlayerInventory>();
-
         if (isLocalPlayer)
         {
             StartCoroutine(CooldownUIRoutine());
-            UpdateBulletUI();
         }
-    }
-
-    public void SetCurrentAmmoShop(AmmoShop ammoShop)
-    {
-        _currentAmmoShop = ammoShop;
-    }
-
-    public void ClearCurrentAmmoShop()
-    {
-        _currentAmmoShop = null;
-    }
-
-    [Server]
-    public void AddAmmo(int amount)
-    {
-        int ammoToAdd = Mathf.Min(amount, maxBulletAmount - bulletAmount);
-        if (ammoToAdd > 0)
-        {
-            bulletAmount += ammoToAdd;
-            Debug.Log($"Added {ammoToAdd} ammo. Current: {bulletAmount}/{maxBulletAmount}");
-        }
-    }
-
-    [Command]
-    public void CmdAddAmmo()
-    {
-        if (bulletAmount >= maxBulletAmount) return;
-
-        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 2;
-
-        if (_playerInventory && _playerInventory.Money >= ammoCost)
-        {
-            _playerInventory.SpendMoney(ammoCost);
-            bulletAmount++;
-        }
-    }
-
-    public bool CanAddAmmo()
-    {
-        int ammoCost = _currentAmmoShop ? _currentAmmoShop.AmmoCost : 2;
-
-        return bulletAmount < maxBulletAmount &&
-               _playerInventory &&
-               _playerInventory.Money >= ammoCost;
     }
 
     private System.Collections.IEnumerator CooldownUIRoutine()
@@ -87,7 +32,7 @@ public class Gun : NetworkBehaviour
 
             if (Mathf.Abs(cooldownProgress - _lastReportedProgress) > 0.01f)
             {
-                UIManager.Instance.UpdateGunCooldown(cooldownProgress);
+                UIManager.Instance?.UpdateGunCooldown(cooldownProgress);
                 _lastReportedProgress = cooldownProgress;
             }
 
@@ -98,12 +43,11 @@ public class Gun : NetworkBehaviour
     public override void OnStartLocalPlayer()
     {
         _playerCamera = Camera.main;
-        UpdateBulletUI();
     }
 
     public bool Charge()
     {
-        if ((float)NetworkTime.time - LastFireTime < cooldown || bulletAmount <= 0) return false;
+        if ((float)NetworkTime.time - LastFireTime < cooldown) return false;
         _isCharged = true;
         return true;
     }
@@ -116,7 +60,7 @@ public class Gun : NetworkBehaviour
     [Client]
     public bool Fire()
     {
-        if (!_isCharged || bulletAmount <= 0) return false;
+        if (!_isCharged) return false;
 
         Vector3 shootDirection = GetShootDirection();
         CmdFire(shootDirection);
@@ -145,10 +89,7 @@ public class Gun : NetworkBehaviour
     [Command]
     protected virtual void CmdFire(Vector3 shootDirection)
     {
-        if (bulletAmount <= 0) return;
-
         LastFireTime = (float)NetworkTime.time;
-        bulletAmount--;
 
         GameObject bullet = Instantiate(
             bulletPrefab,
@@ -168,21 +109,5 @@ public class Gun : NetworkBehaviour
     private void OnLastFireTimeChanged(float oldVal, float newVal)
     {
         _lastReportedProgress = -1f;
-    }
-
-    private void OnBulletAmountChanged(int oldAmount, int newAmount)
-    {
-        if (isLocalPlayer)
-        {
-            UpdateBulletUI();
-        }
-    }
-
-    private void UpdateBulletUI()
-    {
-        if (UIManager.Instance)
-        {
-            UIManager.Instance.UpdateBulletCount(bulletAmount, maxBulletAmount);
-        }
     }
 }

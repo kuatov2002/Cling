@@ -8,17 +8,11 @@ public class CrazyJackGun : Gun
     [Command]
     protected override void CmdFire(Vector3 shootDirection)
     {
-        if (bulletAmount <= 0) return;
-
         LastFireTime = (float)NetworkTime.time;
 
-        // Check if lucky shot (doesn't consume ammo)
+        // Lucky shot: chance to fire a double-damage bullet
         bool isLuckyShot = Random.value < luckyChance;
-
-        if (!isLuckyShot)
-        {
-            bulletAmount--;
-        }
+        float finalDamage = isLuckyShot ? damage * 2f : damage;
 
         GameObject bullet = Instantiate(
             bulletPrefab,
@@ -29,7 +23,7 @@ public class CrazyJackGun : Gun
         Bullet bulletComponent = bullet.GetComponent<Bullet>();
         if (bulletComponent)
         {
-            bulletComponent.Initialize(shootDirection, damage, netId);
+            bulletComponent.Initialize(shootDirection, finalDamage, netId);
         }
 
         NetworkServer.Spawn(bullet);

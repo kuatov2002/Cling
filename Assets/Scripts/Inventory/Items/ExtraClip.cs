@@ -1,19 +1,14 @@
 using UnityEngine;
 
+/// <summary>
+/// Deprecated: Ammo system removed in Hero Shooter conversion.
+/// Kept as stub to avoid missing-script errors on existing prefabs.
+/// Safe to remove this item from the game.
+/// </summary>
 public class ExtraClip : BaseItem
 {
-    [SerializeField] private int ammoAmount = 3;
-    
     public override void Use(PlayerInventory playerInventory = null)
     {
-        if (playerInventory == null) return;
-        
-        Gun gun = playerInventory.GetComponent<Gun>();
-        if (gun != null)
-        {
-            // Add ammo directly to the gun
-            gun.AddAmmo(ammoAmount);
-            Debug.Log($"Used {itemName} - Restored {ammoAmount} ammo");
-        }
+        // No-op: ammo system removed
     }
 }
