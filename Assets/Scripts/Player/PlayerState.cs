@@ -13,7 +13,7 @@ public class PlayerState : NetworkBehaviour
         Dead
     }
 
-    [SyncVar]
+    [SyncVar(hook = nameof(OnStateIntSynced))]
     private int _stateInt = 0;
 
     [SyncVar]
@@ -22,19 +22,25 @@ public class PlayerState : NetworkBehaviour
     public State CurrentState
     {
         get => (State)_stateInt;
-        set 
-        { 
+        set
+        {
             if (CurrentState != value)
             {
                 _stateInt = (int)value;
+                // SyncVar hook fires automatically on clients via replication.
+                // Fire event on server manually (hooks don't fire on server-side set).
                 OnStateChanged?.Invoke(value);
-                
-                if (NetworkClient.active && NetworkClient.isConnected && isOwned)
-                {
-                    RpcUpdateState((int)value);
-                }
             }
         }
+    }
+
+    /// <summary>
+    /// SyncVar hook — fires on clients when _stateInt changes via server replication.
+    /// Replaces the old RpcUpdateState pattern.
+    /// </summary>
+    private void OnStateIntSynced(int oldValue, int newValue)
+    {
+        OnStateChanged?.Invoke((State)newValue);
     }
 
     public bool IsAlive => CurrentState == State.Alive;
@@ -76,15 +82,7 @@ public class PlayerState : NetworkBehaviour
         }
     }
 
-    [ClientRpc]
-    private void RpcUpdateState(int state)
-    {
-        if (!isLocalPlayer)
-        {
-            _stateInt = state;
-            OnStateChanged?.Invoke((State)state);
-        }
-    }
+    // RpcUpdateState removed — SyncVar hook OnStateIntSynced handles client notification.
 
     public override void OnStartServer()
     {

@@ -28,6 +28,15 @@ public class RoomManager : NetworkRoomManager
         sendRate = NetworkTickManager.TickRate;
     }
 
+    public override void OnStartServer()
+    {
+        base.OnStartServer();
+
+        // Set Mirror server tick rate to match our 64 Hz simulation.
+        // Must be done here — NetworkServer.active is false during Awake().
+        NetworkServer.tickRate = NetworkTickManager.TickRate;
+    }
+
     #region Server Callbacks
 
     public override void OnRoomServerConnect(NetworkConnectionToClient conn)

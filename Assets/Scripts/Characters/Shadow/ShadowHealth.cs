@@ -63,6 +63,13 @@ public class ShadowHealth : PlayerHealth
         RpcShowShadow();
     }
 
+    public override void OnStopServer()
+    {
+        // Cancel any pending DeactivateInvisibility Invoke to prevent firing on unspawned object
+        CancelInvoke(nameof(DeactivateInvisibility));
+        base.OnStopServer();
+    }
+
     [Server]
     protected override void ResetAbilitiesForRespawn()
     {

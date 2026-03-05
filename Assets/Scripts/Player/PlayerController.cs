@@ -166,8 +166,9 @@ public class PlayerMovement : NetworkBehaviour
     public override void OnStopClient()
     {
         base.OnStopClient();
-        if (isLocalPlayer)
-            NetworkTickManager.OnTick -= OnClientTick;
+        // Unconditional: isLocalPlayer may already be cleared by the time Mirror calls OnStopClient.
+        // -= on a non-subscribed delegate is safe (no-op).
+        NetworkTickManager.OnTick -= OnClientTick;
     }
 
     // ════════════════════════════════════════════════════════════════

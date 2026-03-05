@@ -71,6 +71,7 @@ public class Gun : NetworkBehaviour
     // ── Pre-allocated for lag compensation (zero GC) ──────────────
     private static readonly List<LagCompensator> _lagCompensators = new List<LagCompensator>(8);
     private static readonly Collider[] _raycastResults = new Collider[16];
+    private static (LagCompensator comp, Vector3 pos, Quaternion rot)[] _lagCompBuffer = new (LagCompensator, Vector3, Quaternion)[16];
 
     // ════════════════════════════════════════════════════════════════
     // LIFECYCLE
@@ -319,14 +320,15 @@ public class Gun : NetworkBehaviour
         bool needsLagComp = connectionToClient != null &&
                             !(connectionToClient is LocalConnectionToClient);
         int targetCount = 0;
-        (LagCompensator comp, Vector3 pos, Quaternion rot)[] originalPositions = null;
 
         if (needsLagComp)
         {
             _lagCompensators.Clear();
             FindAllLagCompensators(_lagCompensators);
 
-            originalPositions = new (LagCompensator, Vector3, Quaternion)[_lagCompensators.Count];
+            // Grow static buffer if needed (amortized, no per-shot alloc)
+            if (_lagCompBuffer.Length < _lagCompensators.Count)
+                _lagCompBuffer = new (LagCompensator, Vector3, Quaternion)[_lagCompensators.Count * 2];
 
             for (int i = 0; i < _lagCompensators.Count; i++)
             {
@@ -343,7 +345,7 @@ public class Gun : NetworkBehaviour
 
                 if (lc.Sample(connectionToClient, out Capture3D sample))
                 {
-                    originalPositions[targetCount] = (lc, lc.transform.position, lc.transform.rotation);
+                    _lagCompBuffer[targetCount] = (lc, lc.transform.position, lc.transform.rotation);
                     targetCount++;
                     lc.transform.position = sample.position;
                 }
@@ -354,11 +356,11 @@ public class Gun : NetworkBehaviour
         bool didHit = Physics.Raycast(origin, spreadDirection, out RaycastHit hitInfo, maxRange, hitLayerMask);
 
         // ── Restore all rewound positions ─────────────────────────────
-        if (originalPositions != null)
+        if (needsLagComp)
         {
             for (int i = 0; i < targetCount; i++)
             {
-                var (comp, pos, rot) = originalPositions[i];
+                var (comp, pos, rot) = _lagCompBuffer[i];
                 comp.transform.position = pos;
                 comp.transform.rotation = rot;
             }

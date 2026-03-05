@@ -46,9 +46,8 @@ public class NetworkTickManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Align Mirror tick rate with our simulation
-        if (NetworkServer.active)
-            NetworkServer.tickRate = TickRate;
+        // NOTE: NetworkServer.tickRate is set in RoomManager.OnStartServer()
+        // because Awake() runs before the server starts (NetworkServer.active == false here).
     }
 
     private void OnDestroy()

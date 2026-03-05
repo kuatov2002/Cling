@@ -77,12 +77,26 @@ public class PlayerInventory : NetworkBehaviour
 
         // Первоначальное заполнение локального кэша
         DeserializeInventoryFromSyncList();
-        
+
         if (isLocalPlayer)
         {
             UpdateActiveItem();
             UpdateMoneyDisplay();
         }
+    }
+
+    public override void OnStopClient()
+    {
+        base.OnStopClient();
+        // Unsubscribe to prevent callback leak between sessions
+        syncInventorySlotNames.Callback -= OnSyncListChanged;
+    }
+
+    public override void OnStopServer()
+    {
+        base.OnStopServer();
+        // Stop MoneyTakeRoutine — it runs an infinite loop with yield
+        StopAllCoroutines();
     }
 
     private IEnumerator MoneyTakeRoutine()
