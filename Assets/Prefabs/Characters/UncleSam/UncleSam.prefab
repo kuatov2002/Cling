@@ -2645,12 +2645,18 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  damage: 20
-  cooldown: 1.5
+  damage: 8
   gunTransform: {fileID: 5548219211156043638}
   maxRange: 300
   hitEffectPrefab: {fileID: 0}
-  tracerPrefab: {fileID: 0}
+  tracerPrefab: {fileID: 114000000000001, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 3}
+  fireRateTicks: 6
+  baseInaccuracy: 0.4
+  moveInaccuracyMax: 4
+  fireInaccuracyPerShot: 0.6
+  fireInaccuracyMax: 7
+  fireInaccuracyDecayRate: 8
+  firstShotThreshold: 0.35
   hitLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
