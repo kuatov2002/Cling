@@ -87,10 +87,22 @@ public class Gun : NetworkBehaviour
         _playerCamera = Camera.main;
 
         // Initialize tracer pool (once, shared across all guns)
+        // Force re-create if stale from previous session (DontDestroyOnLoad pool referencing destroyed objects)
         if (_tracerPool == null && tracerPrefab != null)
         {
             _tracerPool = new NetworkPool<BulletTracer>(tracerPrefab, 16);
         }
+    }
+
+    public override void OnStopLocalPlayer()
+    {
+        base.OnStopLocalPlayer();
+
+        // Release static pool so it's re-created next session
+        // (pool holds BulletTracer instances that get destroyed with scene)
+        _tracerPool = null;
+
+        StopAllCoroutines(); // stop CooldownUIRoutine
     }
 
     // ════════════════════════════════════════════════════════════════

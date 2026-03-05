@@ -27,22 +27,11 @@ public class AbilityUI : MonoBehaviour
     {
         if (_abilityMap.TryGetValue(abilityName, out var slot))
         {
-            slot.abilityName = "";
-            slot.currentCooldown = 0f;
-            slot.isOnCooldown = false;
-            
-            if (slot.iconImage)
-            {
-                slot.iconImage = null;
-            }
-            
-            if (slot.cooldownOverlay)
-            {
-                slot.cooldownOverlay.fillAmount = 0f;
-            }
-            
-            SetSlotVisibility(slot, false);
+            _abilitySlots.Remove(slot);
             _abilityMap.Remove(abilityName);
+
+            if (slot != null)
+                Destroy(slot.gameObject);
         }
     }
     

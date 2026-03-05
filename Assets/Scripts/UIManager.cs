@@ -65,6 +65,16 @@ public class UIManager : MonoBehaviour
         RoomManager.GameStarted += OnGameStarted;
     }
 
+    private void OnDestroy()
+    {
+        RoomManager.HostStopped -= OnNetworkStopped;
+        RoomManager.ClientStopped -= OnNetworkStopped;
+        RoomManager.GameStarted -= OnGameStarted;
+
+        if (Instance == this)
+            Instance = null;
+    }
+
     private void Start()
     {
         UpdateUIState();

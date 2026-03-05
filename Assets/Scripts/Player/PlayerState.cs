@@ -44,12 +44,18 @@ public class PlayerState : NetworkBehaviour
     {
         OnStateChanged += HandleStateChanged;
         OnStateChanged?.Invoke(CurrentState);
-        
+
         // Set nickname from SaveData
         if (!string.IsNullOrEmpty(SaveData.Nickname))
         {
             CmdSetNickname(SaveData.Nickname);
         }
+    }
+
+    public override void OnStopLocalPlayer()
+    {
+        base.OnStopLocalPlayer();
+        OnStateChanged -= HandleStateChanged;
     }
 
     private void HandleStateChanged(State newState)

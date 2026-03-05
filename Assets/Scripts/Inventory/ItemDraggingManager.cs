@@ -30,24 +30,26 @@ using UnityEngine;
 
         private void Update()
         {
-            if (Input.GetKeyUp(KeyCode.Mouse0) && fromCard != default)
+            if (dragCard == null) return;
+
+            if (Input.GetKeyUp(KeyCode.Mouse0) && fromCard != null)
             {
-                if (toCard != default)
+                if (toCard != null)
                 {
                     toCard.SetItem(dragCard.itemData.itemName, dragCard.itemData.itemIcon);
                 }
-                else if (fromCard != default)
+                else
                 {
                     fromCard.SetItem(dragCard.itemData.itemName, dragCard.itemData.itemIcon);
                 }
 
-                toCard = default;
-                fromCard = default;
+                toCard = null;
+                fromCard = null;
 
                 dragCard.gameObject.SetActive(false);
             }
 
-            if (Input.GetKeyDown(KeyCode.Mouse0) && fromCard != default)
+            if (Input.GetKeyDown(KeyCode.Mouse0) && fromCard != null)
             {
                 dragCard.SetItem(fromCard.itemData.itemName, fromCard.itemData.itemIcon);
                 fromCard.UnSetItem();
@@ -56,7 +58,8 @@ using UnityEngine;
             }
 
             dragCard.transform.position = Input.mousePosition + draggingCardOffset;
-            TooltipManagerInventory.Instance.transform.position = Input.mousePosition + tooltipOffset;
+            if (TooltipManagerInventory.Instance != null)
+                TooltipManagerInventory.Instance.transform.position = Input.mousePosition + tooltipOffset;
         }
     }
     

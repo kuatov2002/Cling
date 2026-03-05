@@ -168,6 +168,9 @@ public class RoomManager : NetworkRoomManager
 
     public override void OnStopClient()
     {
+        // Unregister message handler to prevent double-registration on next session
+        NetworkClient.UnregisterHandler<GameStartedMessage>();
+
         CleanupNetworkState();
         ClientStopped?.Invoke();
         base.OnStopClient();
@@ -185,6 +188,9 @@ public class RoomManager : NetworkRoomManager
     {
         _currentPlayerCount = 0;
         _teamAssignCounter = 0;
+
+        // Reset tick counter so game 2 starts from 0
+        NetworkTickManager.ResetTick();
     }
 
     #endregion
