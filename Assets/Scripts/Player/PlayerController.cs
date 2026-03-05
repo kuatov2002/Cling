@@ -229,6 +229,15 @@ public class PlayerMovement : NetworkBehaviour
             }
         }
 
+        // Normalize yaw to (-180, 180] to prevent short overflow in InputState serialization.
+        // short range ±32767 with *100 quantization → safe range ±327.67°.
+        // Without normalization, yaw grows unbounded (370°, 720°...) and overflows,
+        // causing server to receive a completely wrong angle → wrong movement direction.
+        if (_lookYaw > 180f)
+            _lookYaw -= 360f * Mathf.Ceil((_lookYaw - 180f) / 360f);
+        else if (_lookYaw <= -180f)
+            _lookYaw += 360f * Mathf.Ceil((-180f - _lookYaw) / 360f);
+
         // Clamp pitch
         _lookPitch = Mathf.Clamp(_lookPitch, -60f, 70f);
 

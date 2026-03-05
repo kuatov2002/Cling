@@ -2028,7 +2028,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  abilityIcon: {fileID: 0}
+  abilityIcon: {fileID: 21300004, guid: 7ab74e659e1f0a34d9cfec21c478fc12, type: 3}
   damageBoostMultiplier: 1.5
   rageDuration: 5
   passiveSpeedMultiplier: 1.15

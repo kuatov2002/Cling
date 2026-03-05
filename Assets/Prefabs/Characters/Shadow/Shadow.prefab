@@ -703,7 +703,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  abilityIcon: {fileID: 0}
+  abilityIcon: {fileID: 21300004, guid: 7ab74e659e1f0a34d9cfec21c478fc12, type: 3}
   cloakDuration: 4
 --- !u!1 &7672048321992482362
 GameObject:
