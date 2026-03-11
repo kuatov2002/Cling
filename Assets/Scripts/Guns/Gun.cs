@@ -535,6 +535,10 @@ public class Gun : NetworkBehaviour
     [Command]
     protected virtual void CmdFireAutomatic(Vector3 origin, Vector3 baseDirection, int clientTick, bool isCrouching)
     {
+        // ── Block shooting while dead ──────────────────────────────────
+        PlayerState playerState = GetComponent<PlayerState>();
+        if (playerState != null && !playerState.IsAlive) return;
+
         // ── Fire-rate gate ─────────────────────────────────────────────
         int ticksSinceLastFire = clientTick - _spreadState.LastFireTick;
         if (ticksSinceLastFire < fireRateTicks - 1) return; // -1 tick tolerance for network jitter

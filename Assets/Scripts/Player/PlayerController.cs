@@ -153,7 +153,6 @@ public class PlayerMovement : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
-        _prevServerPosition = transform.position;
         NetworkTickManager.OnTick += OnServerTick;
     }
 
@@ -338,6 +337,10 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (gun == null) return;
 
+        // Block shooting while dead
+        PlayerState playerState = GetComponent<PlayerState>();
+        if (playerState != null && !playerState.IsAlive) return;
+
         // Calculate input-based speed for spread
         float inputSpeedSqr = (input.horizontal * input.horizontal + input.vertical * input.vertical)
                                * moveSpeed * moveSpeed;
@@ -356,13 +359,6 @@ public class PlayerMovement : NetworkBehaviour
     // SERVER TICK (authoritative processing)
     // ════════════════════════════════════════════════════════════════
 
-    // ── Anti-cheat ─────────────────────────────────────────────────
-    [Header("Anti-Cheat")]
-    [SerializeField] private float moveSpeedTolerance = 1.15f;
-    private Vector3 _prevServerPosition;
-    private int _speedViolationCount;
-    private const int MaxSpeedViolations = 5;
-
     /// <summary>Fixed 64 Hz server tick — process one input per player.</summary>
     private void OnServerTick(int tick)
     {
@@ -377,18 +373,12 @@ public class PlayerMovement : NetworkBehaviour
 
             _serverLastProcessedTick = input.tick;
 
-            // ── Record position before movement (for speed validation) ──
-            _prevServerPosition = transform.position;
-
             // ── Cache input speed for Gun's server-side spread calc ──
             _lastInputSpeedSqr = (input.horizontal * input.horizontal + input.vertical * input.vertical)
                                   * moveSpeed * moveSpeed;
 
             // ── Authoritative movement ──────────────────────────────
             SimulateMovement(in input);
-
-            // ── Speed validation (anti-cheat) ───────────────────────
-            ValidateMoveSpeed();
 
             // ── Active ability (F key, edge-triggered) ───────────────
             if (input.ability && activeAbility != null)
@@ -481,36 +471,6 @@ public class PlayerMovement : NetworkBehaviour
         // ── Apply ───────────────────────────────────────────────────
         Vector3 finalMove = (moveDirection + _velocity) * NetworkTickManager.TickDuration;
         _controller.Move(finalMove);
-    }
-
-    // ════════════════════════════════════════════════════════════════
-    // ANTI-CHEAT: MOVE SPEED VALIDATION (SERVER)
-    // ════════════════════════════════════════════════════════════════
-
-    [Server]
-    private void ValidateMoveSpeed()
-    {
-        Vector3 delta = transform.position - _prevServerPosition;
-        delta.y = 0f;
-        float distanceSq = delta.sqrMagnitude;
-        float maxAllowed = moveSpeed * NetworkTickManager.TickDuration * moveSpeedTolerance;
-        float maxAllowedSq = maxAllowed * maxAllowed;
-
-        if (distanceSq > maxAllowedSq)
-        {
-            _speedViolationCount++;
-            if (_speedViolationCount >= MaxSpeedViolations)
-            {
-                Debug.LogWarning($"[AntiCheat] Player {netId} speed violation #{_speedViolationCount}. Snapping back.");
-                _controller.enabled = false;
-                transform.position = _prevServerPosition;
-                _controller.enabled = true;
-            }
-        }
-        else
-        {
-            if (_speedViolationCount > 0) _speedViolationCount--;
-        }
     }
 
     // ════════════════════════════════════════════════════════════════

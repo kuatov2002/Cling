@@ -3228,13 +3228,38 @@ MonoBehaviour:
   maxRange: 300
   hitEffectPrefab: {fileID: 0}
   tracerPrefab: {fileID: 114000000000001, guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6, type: 3}
-  fireRateTicks: 6
-  baseInaccuracy: 1
-  moveInaccuracyMax: 25
-  fireInaccuracyPerShot: 6
-  fireInaccuracyMax: 40
-  fireInaccuracyDecayRate: 48
-  firstShotThreshold: 1
+  fireRateTicks: 9
+  recoilPattern:
+  - {x: 0, y: 1.5}
+  - {x: 0.5, y: 3.5}
+  - {x: 0.8, y: 5.5}
+  - {x: 1.2, y: 7}
+  - {x: 0.5, y: 8.5}
+  - {x: -0.5, y: 9.5}
+  - {x: -1.5, y: 10}
+  - {x: -2.5, y: 10.5}
+  - {x: -2, y: 11}
+  - {x: -1, y: 11.5}
+  - {x: 0.5, y: 12}
+  - {x: 2, y: 12.5}
+  - {x: 2.5, y: 13}
+  - {x: 1.5, y: 13.5}
+  - {x: 0.5, y: 14}
+  - {x: -0.5, y: 14.5}
+  - {x: -1.5, y: 14.5}
+  - {x: -1, y: 14.5}
+  - {x: 0.5, y: 14.5}
+  - {x: 1.5, y: 14.5}
+  patternScale: 0.3
+  patternResetTime: 0.4
+  baseInaccuracy: 0.5
+  moveInaccuracyMax: 8
+  crouchMoveInaccuracyMax: 2
+  crouchInaccuracyMultiplier: 0.6
+  fireInaccuracyPerShot: 1.5
+  fireInaccuracyMax: 8
+  fireInaccuracyHalfLife: 0.12
+  firstShotThreshold: 0.3
   hitLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295

@@ -15,6 +15,11 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     private uint _lastAttackerNetId;
     private Coroutine _respawnCoroutine;
 
+    // ── Spawn invulnerability ───────────────────────────────────────
+    [SyncVar] private bool _isInvulnerable;
+    private Coroutine _invulnerabilityCoroutine;
+    private const float SpawnInvulnerabilityDuration = 3f;
+
     // ── Damage modifier (set by ActiveAbility for passive armor) ────
     private float _incomingDamageMultiplier = 1f;
 
@@ -52,6 +57,7 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
     public virtual void TakeDamage(float damage)
     {
         if (!isServer) return;
+        if (_isInvulnerable) return;
         _currentHealth = Mathf.Max(_currentHealth - damage * _incomingDamageMultiplier, 0f);
         if (_currentHealth == 0f) Die();
     }
@@ -169,6 +175,19 @@ public class PlayerHealth : NetworkBehaviour, IDamageable, IHealable
         // Restore state
         GetComponent<PlayerState>().CurrentState = PlayerState.State.Alive;
         RpcSetPlayerVisible(true);
+
+        // Start spawn invulnerability
+        if (_invulnerabilityCoroutine != null)
+            StopCoroutine(_invulnerabilityCoroutine);
+        _invulnerabilityCoroutine = StartCoroutine(SpawnInvulnerability());
+    }
+
+    [Server]
+    private IEnumerator SpawnInvulnerability()
+    {
+        _isInvulnerable = true;
+        yield return new WaitForSeconds(SpawnInvulnerabilityDuration);
+        _isInvulnerable = false;
     }
 
     [Server]
